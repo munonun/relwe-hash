@@ -1,8 +1,8 @@
-# Re-LWE Hash v1.0
+# Re-LWE Hash v1.1
 
 Pure recursive lattice + ARX hashing with strong self-referential chaos, no SHA3 dependency, and a fast AVX2 C port.
 
-Re-LWE Hash v1.0 is the cleaned-up release line: Tree Hybrid is gone, Pure 32 rounds is the default, and 48 rounds remains available as an explicit high-security mode.
+Re-LWE Hash v1.1 is the extreme-performance pure line: Tree Hybrid is gone, Pure 32 rounds is the default, and 48 rounds remains available as an explicit high-security mode.
 
 > Re-LWE Hash is experimental cryptographic research software. It is not standardized or third-party audited. Use SHA-2, SHA-3, BLAKE2, BLAKE3, or another vetted hash for production security.
 
@@ -11,6 +11,7 @@ Re-LWE Hash v1.0 is the cleaned-up release line: Tree Hybrid is gone, Pure 32 ro
 Re-LWE Hash is built around one idea: keep the internal state dirty, recursive, and hard to simplify.
 
 - **No SHA3/SHAKE/BLAKE inside the primitive.**
+- **No borrowed external constants:** the primitive stays self-contained instead of importing SHA-style round constants.
 - **No reduction of recursive depth for benchmark theater.**
 - **Strong recursive self-reference:** the error vector `e`, lattice state `b`, evolved seed, ARX salt, and Ring-LWE mixing feed each other every round.
 - **Pure lattice + ARX hybrid:** modified Ring-LWE polynomial multiplication supplies algebraic weight; ARX supplies fast chaotic diffusion.
@@ -30,7 +31,7 @@ message
   -> digest
 ```
 
-## v1.0 Structure
+## v1.1 Structure
 
 Default parameters:
 
@@ -134,11 +135,11 @@ Throughput: 117.07 MB/s
 Current optimized C AVX2 benchmark on the local 16-thread WSL machine:
 
 ```text
-./benchmark_c --data-mb 32 --iterations 32 --threads 16 --rounds 32
-Throughput: 4045.38 MB/s
+./benchmark_c --data-mb 64 --iterations 16 --threads 16 --rounds 32
+Throughput: 5504.15 MB/s
 ```
 
-That is the v1.0 target in one line:
+That is the v1.1 target in one line:
 
 ```text
 Tree 없이, Pure 32r로, BLAKE3급 bulk throughput.
@@ -180,7 +181,7 @@ go/benchmark               Go benchmark
 relwe.h / relwe.c          Optimized C port
 benchmark.c                C benchmark
 Makefile                   C build/test/bench targets
-SECURITY_ANALYSIS.md       v1.0 security notes
+SECURITY_ANALYSIS.md       v1.1 security notes
 LICENSE                    MIT license
 log/                       Historical experiment logs
 out/                       Generated analysis artifacts

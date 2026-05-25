@@ -25,8 +25,8 @@ static int parse_int(int argc, char **argv, int *i, int *out) {
 
 static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int iterations) {
     size_t len = (size_t)data_mb * 1024u * 1024u;
-    size_t alloc_len = len ? ((len + 31u) & ~(size_t)31u) : 32u;
-    uint8_t *data = (uint8_t *)aligned_alloc(32, alloc_len);
+    size_t alloc_len = len ? ((len + 63u) & ~(size_t)63u) : 64u;
+    uint8_t *data = (uint8_t *)aligned_alloc(64, alloc_len);
     uint8_t out[64];
     if (!data) {
         fprintf(stderr, "allocation failed\n");
@@ -34,16 +34,18 @@ static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int i
     }
     for (size_t i = 0; i < len; i++) data[i] = (uint8_t)(i * 131u + i / 17u);
 
+#ifdef _OPENMP
+    omp_set_dynamic(0);
+#endif
     for (int i = 0; i < 2; i++) relwe_hash(&cfg, data, len, out);
     double start = now_sec();
     uint64_t checksum = 0;
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(cfg.threads) reduction(^:checksum) if(iterations > 1)
+#pragma omp parallel for num_threads(cfg.threads) schedule(static) reduction(^:checksum) if(iterations > 1)
 #endif
     for (int i = 0; i < iterations; i++) {
         uint8_t local_out[64];
         relwe_hash(&cfg, data, len, local_out);
-        if (i == 0) memcpy(out, local_out, sizeof(out));
         checksum ^= ((uint64_t)local_out[0] << 56) ^ ((uint64_t)local_out[7] << 48) ^ ((uint64_t)local_out[15] << 40) ^ (uint64_t)(uint32_t)i;
     }
     bench_guard ^= checksum ^ out[0];

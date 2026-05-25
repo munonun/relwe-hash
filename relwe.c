@@ -13,26 +13,27 @@
 #define KMAX RELWE_DEFAULT_K
 #define MID 128
 #if defined(__GNUC__) || defined(__clang__)
-#define RELWE_ALIGN32 __attribute__((aligned(32)))
+#define RELWE_ALIGN64 __attribute__((aligned(64)))
 #define RELWE_ALWAYS_INLINE inline __attribute__((always_inline))
 #else
-#define RELWE_ALIGN32
+#define RELWE_ALIGN64
 #define RELWE_ALWAYS_INLINE inline
 #endif
 
-typedef struct RELWE_ALIGN32 { int c[RELWE_N]; } poly;
-typedef struct RELWE_ALIGN32 {
+typedef struct RELWE_ALIGN64 { int c[RELWE_N]; } poly;
+typedef struct RELWE_ALIGN64 {
     int fa[RELWE_N], fb[RELWE_N], p0[2 * MID - 1], p2[2 * MID - 1], psum[2 * MID - 1];
     int a_sum[MID], b_sum[MID], tmp[2 * RELWE_N - 1];
 } mul_scratch;
-typedef struct RELWE_ALIGN32 {
+typedef struct RELWE_ALIGN64 {
     int lo[RELWE_N], hi[RELWE_N], sum[RELWE_N];
 } poly_ntt;
-typedef struct RELWE_ALIGN32 { uint32_t state[16], length; uint8_t buf[64]; size_t buf_len; uint64_t total_len; } sponge;
-typedef struct RELWE_ALIGN32 { uint32_t state[16], counter; } arx_stream;
-typedef struct RELWE_ALIGN32 { uint32_t iv[16], seed[16]; poly state[KMAX], err[KMAX]; } core_state;
+typedef struct RELWE_ALIGN64 { uint32_t state[16], length; uint8_t buf[64]; size_t buf_len; uint64_t total_len; } sponge;
+typedef struct RELWE_ALIGN64 { uint32_t state[16], counter; } arx_stream;
+typedef struct RELWE_ALIGN64 { uint32_t iv[16], seed[16]; poly state[KMAX], err[KMAX]; } core_state;
 
-static int bit_reverse[RELWE_N], stage_roots[8], stage_inv_roots[8], inv_n, tables_ready;
+static int bit_reverse[RELWE_N], bitrev_i[RELWE_N / 2], bitrev_j[RELWE_N / 2], bitrev_count;
+static int stage_roots[8], stage_inv_roots[8], inv_n, tables_ready;
 
 static RELWE_ALWAYS_INLINE uint32_t rotl32(uint32_t x, int n) { return (x << n) | (x >> (32 - n)); }
 static RELWE_ALWAYS_INLINE uint32_t load32(const uint8_t *p, size_t n) { uint32_t v = 0; for (size_t i = 0; i < n; i++) v |= (uint32_t)p[i] << (8 * i); return v; }
@@ -94,6 +95,11 @@ static void init_tables(void) {
         int x = i, rev = 0;
         for (int bit = RELWE_N >> 1; bit > 0; bit >>= 1) { rev = (rev << 1) | (x & 1); x >>= 1; }
         bit_reverse[i] = rev;
+        if (i < rev) {
+            bitrev_i[bitrev_count] = i;
+            bitrev_j[bitrev_count] = rev;
+            bitrev_count++;
+        }
     }
     int root = primitive_root_mod(RELWE_Q), stage = 0;
     for (int length = 2; length <= RELWE_N; length <<= 1) {
@@ -108,7 +114,10 @@ static void init_tables(void) {
 
 static void ntt_in_place(int v[RELWE_N], int invert) {
     init_tables();
-    for (int i = 1; i < RELWE_N; i++) { int j = bit_reverse[i]; if (i < j) { int t = v[i]; v[i] = v[j]; v[j] = t; } }
+    for (int k = 0; k < bitrev_count; k++) {
+        int i = bitrev_i[k], j = bitrev_j[k], t = v[i];
+        v[i] = v[j]; v[j] = t;
+    }
     int stage = 0;
     for (int length = 2; length <= RELWE_N; length <<= 1) {
         int wlen = invert ? stage_inv_roots[stage] : stage_roots[stage], half = length >> 1;
@@ -130,15 +139,34 @@ static void qround(uint32_t s[16], int a, int b, int c, int d) {
     s[a] += s[b]; s[d] = rotl32(s[d] ^ s[a], 16); s[c] += s[d]; s[b] = rotl32(s[b] ^ s[c], 12);
     s[a] += s[b]; s[d] = rotl32(s[d] ^ s[a], 8);  s[c] += s[d]; s[b] = rotl32(s[b] ^ s[c], 7);
 }
+static RELWE_ALWAYS_INLINE void arx_round(uint32_t s[16], int r) {
+    s[0] += 0x9E3779B9u + (uint32_t)r; s[5] ^= rotl32(s[0], 3 + (r & 15));
+    s[10] += rotl32(s[15], 11); s[15] ^= 0xA5A5A5A5u + 0x01010101u * (uint32_t)r;
+    qround(s,0,4,8,12); qround(s,1,5,9,13); qround(s,2,6,10,14); qround(s,3,7,11,15);
+    qround(s,0,5,10,15); qround(s,1,6,11,12); qround(s,2,7,8,13); qround(s,3,4,9,14);
+}
 static void first16(const uint32_t *words, size_t n, uint32_t out[16]) {
     for (int i = 0; i < 16; i++) out[i] = (i < (int)n) ? words[i] : (0x9E3779B9u ^ (uint32_t)i * 0x85EBCA6Bu);
 }
 static void arx_permute_in(uint32_t s[16], int rounds) {
-    for (int r = 0; r < rounds; r++) {
-        s[0] += 0x9E3779B9u + (uint32_t)r; s[5] ^= rotl32(s[0], 3 + (r & 15));
-        s[10] += rotl32(s[15], 11); s[15] ^= 0xA5A5A5A5u + 0x01010101u * (uint32_t)r;
-        qround(s,0,4,8,12); qround(s,1,5,9,13); qround(s,2,6,10,14); qround(s,3,7,11,15);
-        qround(s,0,5,10,15); qround(s,1,6,11,12); qround(s,2,7,8,13); qround(s,3,4,9,14);
+    switch (rounds) {
+    case 6:
+        for (int r = 0; r < 6; r++) arx_round(s, r);
+        return;
+    case 8:
+        for (int r = 0; r < 8; r++) arx_round(s, r);
+        return;
+    case 10:
+        for (int r = 0; r < 10; r++) arx_round(s, r);
+        return;
+    case 12:
+        for (int r = 0; r < 12; r++) arx_round(s, r);
+        return;
+    case 16:
+        for (int r = 0; r < 16; r++) arx_round(s, r);
+        return;
+    default:
+        for (int r = 0; r < rounds; r++) arx_round(s, r);
     }
 }
 static void arx_permute(const uint32_t *words, size_t n, int rounds, uint32_t out[16]) { first16(words, n, out); arx_permute_in(out, rounds); }
@@ -193,7 +221,12 @@ static void sponge_update(sponge *s, const uint8_t *data, size_t len) {
         size_t take = 64 - s->buf_len; if (take > len) take = len; memcpy(s->buf + s->buf_len, data, take); s->buf_len += take; off += take;
         if (s->buf_len == 64) { sponge_absorb_block(s, s->buf, 64, 1); s->buf_len = 0; }
     }
-    while (off + 64 <= len) { sponge_absorb_block(s, data + off, 64, 1); off += 64; }
+    while (off + 64 <= len) {
+#if defined(__GNUC__) || defined(__clang__)
+        __builtin_prefetch(data + off + 512, 0, 1);
+#endif
+        sponge_absorb_block(s, data + off, 64, 1); off += 64;
+    }
     if (off < len) { s->buf_len = len - off; memcpy(s->buf, data + off, s->buf_len); }
 }
 static void sponge_finalize(sponge *s, uint32_t out[16]) {

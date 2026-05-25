@@ -1,8 +1,8 @@
-# Security Analysis: Re-LWE Hash v1.0
+# Security Analysis: Re-LWE Hash v1.1
 
 ## Summary
 
-Re-LWE Hash v1.0 is an experimental pure recursive lattice + ARX hash. The default configuration is 32 rounds. The 48-round path remains available through `--rounds 48` for conservative experiments.
+Re-LWE Hash v1.1 is an experimental pure recursive lattice + ARX hash. The default configuration is 32 rounds. The 48-round path remains available through `--rounds 48` for conservative experiments.
 
 The design goal is not to wrap an existing hash. It is to preserve a strong self-referential Re-LWE feedback loop:
 
@@ -17,7 +17,9 @@ error_r + state_r + seed_r
 
 The construction has promising empirical behavior, but it has no formal proof, no standardization, and no third-party audit. Treat it as research software.
 
-## v1.0 Baseline
+The design philosophy remains: no Tree Hybrid, no SHA3/SHAKE dependency, no borrowed external round constants, and no weakening of the recursive `e <-> b` chaos for speed.
+
+## v1.1 Baseline
 
 ```text
 mode:        Pure recursive only
@@ -31,7 +33,7 @@ eta:         2
 output:      256 bits by default
 ```
 
-Tree Hybrid has been removed. There is no split/local/merge phase in v1.0.
+Tree Hybrid has been removed. There is no split/local/merge phase in v1.1.
 
 ## Security Goals
 
@@ -84,7 +86,7 @@ mean absolute bias from 0.5: 0.0005
 max absolute bias from 0.5: 0.0019
 ```
 
-This is the main reason 32 rounds became the v1.0 default.
+This is the main reason 32 rounds remains the v1.1 default.
 
 ## 32 Rounds vs 48 Rounds
 
@@ -161,11 +163,11 @@ The primitive is intentionally chaotic and self-referential, but chaos is not a 
 
 ## Performance Context
 
-The v1.0 default is 32 rounds because it gives a strong empirical security/performance balance:
+The v1.1 default is 32 rounds because it gives a strong empirical security/performance balance:
 
 ```text
 Go Pure 32r historical benchmark: 117.07 MB/s
-C AVX2 Pure 32r local benchmark: 4045.38 MB/s
+C AVX2 Pure 32r local benchmark: 5504.15 MB/s
 ```
 
 The optimized C path reaches BLAKE3-class multi-threaded bulk throughput without restoring Tree Hybrid and without weakening the recursive core.

@@ -1,0 +1,333 @@
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks avalanche,differential,linear,cycle \
+  --eta 2
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Reduced-round differential characteristic search (eta=2) ==
+rounds=4,8,12,16,24,32,48, flips=1,2,4,8, candidates=128 per round/flip, trials=64 per candidate, workers=16
+
+Best low-weight differential characteristics:
+tested characteristics: 3584
+rounds | flips | candidates | trials | best mean | min | max | positions
+-------+-------+------------+--------+-----------+-----+-----+----------
+     4 |     1 |        128 |     64 |    124.52 | 106 | 145 | [59]
+     4 |     2 |        128 |     64 |    125.27 | 104 | 142 | [158,204]
+     4 |     4 |        128 |     64 |    125.81 | 110 | 153 | [56,132,172,206]
+     4 |     8 |        128 |     64 |    125.78 | 114 | 144 | [14,27,42,90,93,159,171,198]
+     8 |     1 |        128 |     64 |    125.81 | 107 | 143 | [81]
+     8 |     2 |        128 |     64 |    125.88 | 111 | 145 | [150,249]
+     8 |     4 |        128 |     64 |    124.97 | 109 | 143 | [3,4,147,187]
+     8 |     8 |        128 |     64 |    125.42 | 105 | 144 | [4,12,26,27,67,136,144,248]
+    12 |     1 |        128 |     64 |    125.25 | 107 | 140 | [178]
+    12 |     2 |        128 |     64 |    125.25 | 110 | 154 | [119,147]
+    12 |     4 |        128 |     64 |    125.38 | 103 | 141 | [12,16,141,205]
+    12 |     8 |        128 |     64 |    125.45 | 111 | 147 | [21,45,56,115,126,198,233,235]
+    16 |     1 |        128 |     64 |    125.77 | 108 | 146 | [35]
+    16 |     2 |        128 |     64 |    125.88 | 105 | 146 | [27,227]
+    16 |     4 |        128 |     64 |    125.23 | 106 | 144 | [30,52,123,171]
+    16 |     8 |        128 |     64 |    124.94 | 106 | 148 | [41,58,84,157,165,207,223,253]
+    24 |     1 |        128 |     64 |    125.45 | 107 | 144 | [119]
+    24 |     2 |        128 |     64 |    125.52 | 112 | 140 | [14,91]
+    24 |     4 |        128 |     64 |    124.47 | 103 | 140 | [11,39,116,204]
+    24 |     8 |        128 |     64 |    125.92 | 104 | 145 | [21,54,86,97,160,204,211,241]
+    32 |     1 |        128 |     64 |    125.03 | 103 | 144 | [84]
+    32 |     2 |        128 |     64 |    125.36 | 105 | 146 | [110,247]
+    32 |     4 |        128 |     64 |    125.16 | 110 | 150 | [70,90,127,143]
+    32 |     8 |        128 |     64 |    124.45 | 109 | 137 | [42,49,84,147,150,165,173,238]
+    48 |     1 |        128 |     64 |    125.28 | 107 | 142 | [255]
+    48 |     2 |        128 |     64 |    125.83 | 109 | 149 | [4,78]
+    48 |     4 |        128 |     64 |    125.61 | 105 | 143 | [13,31,152,156]
+    48 |     8 |        128 |     64 |    125.83 | 107 | 146 | [3,23,46,90,105,134,177,250]
+
+== Statistical avalanche test (eta=2) ==
+
+rounds: 48, k: 3, trials: 5000, output_bits: 256
+mean: 127.955 bits (49.983%)
+stddev: 7.949 bits
+min: 101 bits
+max: 156 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.88%
+Avalanche quality: Good
+elapsed: 35.62s
+
+Distribution histogram:
+100-103:     7 
+104-107:    29 #
+108-111:    70 ###
+112-115:   180 ########
+116-119:   441 ####################
+120-123:   710 #################################
+124-127:   893 #########################################
+128-131:  1038 ################################################
+132-135:   780 ####################################
+136-139:   499 #######################
+140-143:   246 ###########
+144-147:    75 ###
+148-151:    25 #
+152-155:     6 
+156-159:     1 
+
+Bit independence test:
+output flip probability range: 0.4826..0.5222
+mean absolute bias from 0.5: 0.0053
+max absolute bias from 0.5: 0.0222
+worst output bits:
+  out_bit=144 flip_prob=0.5222 bias=+0.0222
+  out_bit=236 flip_prob=0.5176 bias=+0.0176
+  out_bit= 82 flip_prob=0.4826 bias=-0.0174
+  out_bit= 59 flip_prob=0.4828 bias=-0.0172
+  out_bit= 30 flip_prob=0.5168 bias=+0.0168
+  out_bit=171 flip_prob=0.5166 bias=+0.0166
+  out_bit=177 flip_prob=0.5156 bias=+0.0156
+  out_bit= 35 flip_prob=0.5148 bias=+0.0148
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit=231 out_bit=192 n=  23 prob=0.9130 z=3.96
+  in_bit=214 out_bit= 84 n=  19 prob=0.9474 z=3.90
+  in_bit=196 out_bit=131 n=  18 prob=0.9444 z=3.77
+  in_bit=134 out_bit= 22 n=  18 prob=0.0556 z=3.77
+  in_bit= 51 out_bit= 36 n=  24 prob=0.8750 z=3.67
+  in_bit= 47 out_bit= 46 n=  24 prob=0.1250 z=3.67
+  in_bit=210 out_bit=  2 n=  27 prob=0.8519 z=3.66
+  in_bit=199 out_bit=195 n=  17 prob=0.0588 z=3.64
+  in_bit= 48 out_bit= 85 n=  20 prob=0.1000 z=3.58
+  in_bit=225 out_bit= 64 n=  20 prob=0.9000 z=3.58
+
+== Linear approximation bias test (eta=2) ==
+rounds=48, k=3, trials=5000, masks=64, message_bits=512, output_bits=256
+mean absolute linear bias: 0.00564
+max absolute linear bias: 0.01580 (2.23 sigma)
+top biased approximations:
+  mask= 13 prob=0.48420 bias=-0.01580 input=[45,66] output=[23,229]
+  mask= 47 prob=0.48440 bias=-0.01560 input=[100,318,370] output=[30,171,184,204]
+  mask= 42 prob=0.48560 bias=-0.01440 input=[64,322,417,432] output=[13,39,89,214]
+  mask= 63 prob=0.51420 bias=+0.01420 input=[187,428] output=[30]
+  mask= 39 prob=0.48820 bias=-0.01180 input=[124,323,448] output=[27,42,47,101]
+  mask= 53 prob=0.48860 bias=-0.01140 input=[324] output=[123,168,226]
+  mask= 23 prob=0.51140 bias=+0.01140 input=[79,473] output=[156]
+  mask= 33 prob=0.51120 bias=+0.01120 input=[401] output=[40,83,161,186]
+  mask= 48 prob=0.49000 bias=-0.01000 input=[58] output=[183,241]
+  mask= 46 prob=0.49040 bias=-0.00960 input=[153,394,456,478] output=[75,91,154,210]
+elapsed: 27.288s
+
+== Full-state fingerprint cycle detection (eta=2) ==
+No cycle in 513 fingerprints for msg=74657374
+No cycle in 513 fingerprints for msg=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+No cycle in 513 fingerprints for msg=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+No cycle in 513 fingerprints for msg=6162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162
+No cycle in 513 fingerprints for msg=
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=00
+No cycle in 513 fingerprints for msg=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+No cycle in 513 fingerprints for msg=00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+No cycle in 513 fingerprints for msg=61
+No repeated full-state fingerprints detected.
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks avalanche,differential,linear,cycle \
+  --eta 4
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=4
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Reduced-round differential characteristic search (eta=4) ==
+rounds=4,8,12,16,24,32,48, flips=1,2,4,8, candidates=128 per round/flip, trials=64 per candidate, workers=16
+
+Best low-weight differential characteristics:
+tested characteristics: 3584
+rounds | flips | candidates | trials | best mean | min | max | positions
+-------+-------+------------+--------+-----------+-----+-----+----------
+     4 |     1 |        128 |     64 |    126.11 | 112 | 144 | [238]
+     4 |     2 |        128 |     64 |    125.61 | 113 | 142 | [47,126]
+     4 |     4 |        128 |     64 |    125.64 | 106 | 147 | [124,138,154,184]
+     4 |     8 |        128 |     64 |    126.05 | 106 | 144 | [11,53,72,118,142,163,165,237]
+     8 |     1 |        128 |     64 |    125.11 | 113 | 149 | [104]
+     8 |     2 |        128 |     64 |    125.92 | 111 | 143 | [109,246]
+     8 |     4 |        128 |     64 |    125.83 | 109 | 142 | [22,87,91,245]
+     8 |     8 |        128 |     64 |    125.17 | 105 | 146 | [1,5,23,36,198,200,219,237]
+    12 |     1 |        128 |     64 |    125.75 | 107 | 142 | [170]
+    12 |     2 |        128 |     64 |    125.33 |  95 | 142 | [165,245]
+    12 |     4 |        128 |     64 |    125.12 | 105 | 148 | [5,45,236,254]
+    12 |     8 |        128 |     64 |    125.64 | 112 | 143 | [5,68,88,103,125,150,166,245]
+    16 |     1 |        128 |     64 |    124.86 | 105 | 142 | [124]
+    16 |     2 |        128 |     64 |    125.80 | 102 | 147 | [80,151]
+    16 |     4 |        128 |     64 |    125.80 | 108 | 141 | [38,40,122,142]
+    16 |     8 |        128 |     64 |    125.61 | 107 | 149 | [0,40,63,67,95,121,182,229]
+    24 |     1 |        128 |     64 |    125.48 | 108 | 146 | [89]
+    24 |     2 |        128 |     64 |    125.70 | 110 | 142 | [4,88]
+    24 |     4 |        128 |     64 |    124.88 | 104 | 145 | [7,150,175,193]
+    24 |     8 |        128 |     64 |    125.83 | 106 | 149 | [25,59,61,91,105,198,221,231]
+    32 |     1 |        128 |     64 |    125.36 | 109 | 142 | [84]
+    32 |     2 |        128 |     64 |    125.23 | 105 | 147 | [96,195]
+    32 |     4 |        128 |     64 |    126.08 | 112 | 146 | [33,52,108,248]
+    32 |     8 |        128 |     64 |    125.25 | 103 | 140 | [5,10,44,103,143,193,222,227]
+    48 |     1 |        128 |     64 |    125.38 | 110 | 146 | [220]
+    48 |     2 |        128 |     64 |    125.41 | 102 | 146 | [183,188]
+    48 |     4 |        128 |     64 |    125.09 | 107 | 141 | [155,162,228,253]
+    48 |     8 |        128 |     64 |    125.55 |  95 | 150 | [48,66,101,124,125,145,188,215]
+
+== Statistical avalanche test (eta=4) ==
+
+rounds: 48, k: 3, trials: 5000, output_bits: 256
+mean: 127.976 bits (49.991%)
+stddev: 7.871 bits
+min: 96 bits
+max: 156 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 90.24%
+Avalanche quality: Good
+elapsed: 34.674s
+
+Distribution histogram:
+ 96- 99:     1 
+100-103:     2 
+104-107:    17 #
+108-111:    75 ####
+112-115:   178 #########
+116-119:   422 ####################
+120-123:   703 ##################################
+124-127:   983 ###############################################
+128-131:   995 ################################################
+132-135:   795 ######################################
+136-139:   488 ########################
+140-143:   205 ##########
+144-147:    95 #####
+148-151:    34 ##
+152-155:     6 
+156-159:     1 
+
+Bit independence test:
+output flip probability range: 0.4810..0.5222
+mean absolute bias from 0.5: 0.0053
+max absolute bias from 0.5: 0.0222
+worst output bits:
+  out_bit= 23 flip_prob=0.5222 bias=+0.0222
+  out_bit=  0 flip_prob=0.5204 bias=+0.0204
+  out_bit= 10 flip_prob=0.4810 bias=-0.0190
+  out_bit= 30 flip_prob=0.4828 bias=-0.0172
+  out_bit= 16 flip_prob=0.4836 bias=-0.0164
+  out_bit=140 flip_prob=0.5160 bias=+0.0160
+  out_bit=122 flip_prob=0.4840 bias=-0.0160
+  out_bit=180 flip_prob=0.4844 bias=-0.0156
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit= 58 out_bit=109 n=  21 prob=0.0476 z=4.15
+  in_bit=197 out_bit=227 n=  17 prob=1.0000 z=4.12
+  in_bit=158 out_bit=161 n=  23 prob=0.9130 z=3.96
+  in_bit=205 out_bit=106 n=  19 prob=0.9474 z=3.90
+  in_bit=141 out_bit= 96 n=  21 prob=0.9048 z=3.71
+  in_bit=106 out_bit=198 n=  21 prob=0.0952 z=3.71
+  in_bit= 33 out_bit=116 n=  27 prob=0.8519 z=3.66
+  in_bit=186 out_bit=  0 n=  27 prob=0.8519 z=3.66
+  in_bit=227 out_bit=219 n=  17 prob=0.0588 z=3.64
+  in_bit=133 out_bit=209 n=  23 prob=0.8696 z=3.54
+
+== Linear approximation bias test (eta=4) ==
+rounds=48, k=3, trials=5000, masks=64, message_bits=512, output_bits=256
+mean absolute linear bias: 0.00528
+max absolute linear bias: 0.01660 (2.35 sigma)
+top biased approximations:
+  mask= 50 prob=0.51660 bias=+0.01660 input=[153,378] output=[229]
+  mask= 49 prob=0.48440 bias=-0.01560 input=[110,181,377] output=[10,169]
+  mask=  9 prob=0.51480 bias=+0.01480 input=[35,253,467] output=[123]
+  mask= 57 prob=0.48720 bias=-0.01280 input=[82,267,360,425] output=[49,99,190,235]
+  mask=  6 prob=0.48820 bias=-0.01180 input=[7] output=[26,56,169,174]
+  mask= 58 prob=0.48860 bias=-0.01140 input=[146,178,248,268] output=[37,41]
+  mask=  2 prob=0.51140 bias=+0.01140 input=[293] output=[2,65,194]
+  mask= 56 prob=0.51040 bias=+0.01040 input=[22,260,327,388] output=[49,119,154,224]
+  mask= 25 prob=0.51020 bias=+0.01020 input=[129,163,190,245] output=[6,54,182]
+  mask= 17 prob=0.48980 bias=-0.01020 input=[139,314] output=[31,100,113,145]
+elapsed: 26.395s
+
+== Full-state fingerprint cycle detection (eta=4) ==
+No cycle in 513 fingerprints for msg=
+No cycle in 513 fingerprints for msg=61
+No cycle in 513 fingerprints for msg=00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=6162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162
+No cycle in 513 fingerprints for msg=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+No cycle in 513 fingerprints for msg=00
+No cycle in 513 fingerprints for msg=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+No cycle in 513 fingerprints for msg=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+No cycle in 513 fingerprints for msg=5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+No cycle in 513 fingerprints for msg=74657374
+No repeated full-state fingerprints detected.
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack   --attacks stat-avalanche   --stat-avalanche-trials 500000   --stat-avalanche-rounds 48  --threads 8 --eta 2
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test (eta=2) ==
+rounds: 48, k: 3, trials: 500000, output_bits: 256
+mean: 128.012 bits (50.005%)
+stddev: 8.005 bits
+min: 89 bits
+max: 170 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.52%
+Avalanche quality: Good
+elapsed: 1h3m33.48s
+
+Distribution histogram:
+ 88- 91:     2 
+ 92- 95:    19 
+ 96- 99:    80 
+100-103:   448 
+104-107:  1985 #
+108-111:  7232 ####
+112-115: 19696 ##########
+116-119: 42609 #####################
+120-123: 71249 ###################################
+124-127: 93900 ##############################################
+128-131: 97021 ################################################
+132-135: 78362 #######################################
+136-139: 49615 #########################
+140-143: 24658 ############
+144-147:  9444 #####
+148-151:  2898 #
+152-155:   647 
+156-159:   110 
+160-163:    21 
+164-167:     3 
+168-171:     1 
+172-175:     0 
+
+Bit independence test:
+output flip probability range: 0.4985..0.5019
+mean absolute bias from 0.5: 0.0005
+max absolute bias from 0.5: 0.0019
+worst output bits:
+  out_bit=152 flip_prob=0.5019 bias=+0.0019
+  out_bit=178 flip_prob=0.5017 bias=+0.0017
+  out_bit= 25 flip_prob=0.5016 bias=+0.0016
+  out_bit=127 flip_prob=0.5016 bias=+0.0016
+  out_bit=106 flip_prob=0.5015 bias=+0.0015
+  out_bit=103 flip_prob=0.4985 bias=-0.0015
+  out_bit= 12 flip_prob=0.5013 bias=+0.0013
+  out_bit=  5 flip_prob=0.5013 bias=+0.0013
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit= 77 out_bit=102 n=1980 prob=0.4515 z=4.31
+  in_bit=203 out_bit=255 n=2019 prob=0.5448 z=4.03
+  in_bit= 23 out_bit=184 n=1970 prob=0.5452 z=4.01
+  in_bit=211 out_bit=181 n=1991 prob=0.5445 z=3.97
+  in_bit=145 out_bit=225 n=1854 prob=0.5458 z=3.95
+  in_bit= 22 out_bit= 20 n=1894 prob=0.4551 z=3.91
+  in_bit= 83 out_bit=210 n=1942 prob=0.5443 z=3.90
+  in_bit=127 out_bit=255 n=1927 prob=0.4556 z=3.90
+  in_bit= 51 out_bit=183 n=1981 prob=0.4563 z=3.89
+  in_bit=112 out_bit=179 n=1969 prob=0.4566 z=3.85

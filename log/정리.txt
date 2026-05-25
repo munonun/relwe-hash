@@ -1,0 +1,400 @@
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks stat-avalanche \
+  --stat-avalanche-trials 8000 \
+  --stat-avalanche-rounds 48 \
+  --threads 8
+Re-LWE Hash v2 Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test ==
+rounds: 48, k: 3, trials: 8000, output_bits: 256
+mean: 128.006 bits (50.002%)
+stddev: 7.980 bits
+min: 99 bits
+max: 160 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.60%
+Avalanche quality: Good
+elapsed: 1m17.52s
+
+Distribution histogram:
+ 96- 99:     1 
+100-103:     5 
+104-107:    27 #
+108-111:   112 ####
+112-115:   334 ##########
+116-119:   708 ######################
+120-123:  1112 ###################################
+124-127:  1480 ##############################################
+128-131:  1536 ################################################
+132-135:  1294 ########################################
+136-139:   812 #########################
+140-143:   368 ############
+144-147:   141 ####
+148-151:    61 ##
+152-155:     7 
+156-159:     1 
+160-163:     1 
+
+Bit independence test:
+output flip probability range: 0.4873..0.5131
+mean absolute bias from 0.5: 0.0043
+max absolute bias from 0.5: 0.0131
+worst output bits:
+  out_bit= 81 flip_prob=0.5131 bias=+0.0131
+  out_bit=186 flip_prob=0.5130 bias=+0.0130
+  out_bit=127 flip_prob=0.4873 bias=-0.0127
+  out_bit=246 flip_prob=0.5120 bias=+0.0120
+  out_bit=181 flip_prob=0.4886 bias=-0.0114
+  out_bit= 65 flip_prob=0.5111 bias=+0.0111
+  out_bit= 75 flip_prob=0.4889 bias=-0.0111
+  out_bit= 58 flip_prob=0.4891 bias=-0.0109
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit=104 out_bit= 38 n=  28 prob=0.1071 z=4.16
+  in_bit=160 out_bit=148 n=  39 prob=0.1795 z=4.00
+  in_bit= 51 out_bit=146 n=  41 prob=0.1951 z=3.90
+  in_bit= 38 out_bit=229 n=  32 prob=0.8438 z=3.89
+  in_bit= 73 out_bit=119 n=  25 prob=0.1200 z=3.80
+  in_bit= 84 out_bit= 92 n=  28 prob=0.1429 z=3.78
+  in_bit=208 out_bit=194 n=  28 prob=0.1429 z=3.78
+  in_bit=189 out_bit= 79 n=  31 prob=0.8387 z=3.77
+  in_bit=178 out_bit=129 n=  39 prob=0.2051 z=3.68
+  in_bit= 67 out_bit= 91 n=  36 prob=0.8056 z=3.67
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks differential \
+  --differential-rounds 48 \
+  --differential-trials 64 \
+  --differential-flips 1,2,4 \
+  --threads 8
+Re-LWE Hash v2 Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Differential avalanche and characteristic search ==
+rounds | flips | trials | min flips | mean flips | max flips | mean %
+-------+-------+--------+-----------+------------+-----------+--------
+     1 |     1 |     64 |       111 |     127.08 |       143 |  49.64
+     1 |     2 |     64 |       114 |     127.03 |       152 |  49.62
+     1 |     4 |     64 |       112 |     127.86 |       145 |  49.95
+     2 |     1 |     64 |       111 |     128.47 |       152 |  50.18
+     2 |     2 |     64 |       104 |     130.12 |       156 |  50.83
+     2 |     4 |     64 |       106 |     128.34 |       147 |  50.13
+     3 |     1 |     64 |       110 |     129.36 |       149 |  50.53
+     3 |     2 |     64 |       114 |     128.83 |       143 |  50.32
+     3 |     4 |     64 |       107 |     128.05 |       147 |  50.02
+     4 |     1 |     64 |       108 |     127.42 |       152 |  49.77
+     4 |     2 |     64 |       108 |     128.20 |       148 |  50.08
+     4 |     4 |     64 |       115 |     128.89 |       145 |  50.35
+     5 |     1 |     64 |       105 |     127.48 |       142 |  49.80
+     5 |     2 |     64 |       105 |     127.34 |       142 |  49.74
+     5 |     4 |     64 |       105 |     128.36 |       148 |  50.14
+     6 |     1 |     64 |       109 |     126.70 |       139 |  49.49
+     6 |     2 |     64 |       111 |     127.30 |       150 |  49.73
+     6 |     4 |     64 |       109 |     128.06 |       145 |  50.02
+     7 |     1 |     64 |       107 |     128.64 |       147 |  50.25
+     7 |     2 |     64 |       110 |     127.27 |       145 |  49.71
+     7 |     4 |     64 |       111 |     128.80 |       145 |  50.31
+     8 |     1 |     64 |       111 |     127.89 |       144 |  49.96
+     8 |     2 |     64 |       116 |     128.42 |       144 |  50.16
+     8 |     4 |     64 |       111 |     126.41 |       146 |  49.38
+     9 |     1 |     64 |       110 |     128.03 |       148 |  50.01
+     9 |     2 |     64 |       104 |     127.36 |       152 |  49.75
+     9 |     4 |     64 |       112 |     129.16 |       144 |  50.45
+    10 |     1 |     64 |       101 |     126.67 |       145 |  49.48
+    10 |     2 |     64 |       104 |     127.47 |       151 |  49.79
+    10 |     4 |     64 |       106 |     127.91 |       150 |  49.96
+    11 |     1 |     64 |       103 |     128.02 |       156 |  50.01
+    11 |     2 |     64 |       110 |     127.28 |       145 |  49.72
+    11 |     4 |     64 |       110 |     128.47 |       145 |  50.18
+    12 |     1 |     64 |       112 |     128.61 |       147 |  50.24
+    12 |     2 |     64 |       102 |     128.16 |       150 |  50.06
+    12 |     4 |     64 |       103 |     127.31 |       151 |  49.73
+    13 |     1 |     64 |       113 |     128.44 |       150 |  50.17
+    13 |     2 |     64 |       110 |     129.41 |       154 |  50.55
+    13 |     4 |     64 |       112 |     129.12 |       148 |  50.44
+    14 |     1 |     64 |       107 |     128.88 |       145 |  50.34
+    14 |     2 |     64 |       114 |     129.28 |       148 |  50.50
+    14 |     4 |     64 |       111 |     128.20 |       144 |  50.08
+    15 |     1 |     64 |       109 |     126.38 |       148 |  49.37
+    15 |     2 |     64 |       112 |     128.97 |       143 |  50.38
+    15 |     4 |     64 |       104 |     128.78 |       142 |  50.31
+    16 |     1 |     64 |       114 |     127.88 |       142 |  49.95
+    16 |     2 |     64 |       110 |     128.80 |       143 |  50.31
+    16 |     4 |     64 |       111 |     128.20 |       148 |  50.08
+    17 |     1 |     64 |       111 |     126.88 |       145 |  49.56
+    17 |     2 |     64 |       108 |     127.45 |       145 |  49.79
+    17 |     4 |     64 |       112 |     129.42 |       148 |  50.56
+    18 |     1 |     64 |       109 |     127.47 |       145 |  49.79
+    18 |     2 |     64 |       110 |     127.08 |       144 |  49.64
+    18 |     4 |     64 |       109 |     129.11 |       152 |  50.43
+    19 |     1 |     64 |       113 |     128.44 |       142 |  50.17
+    19 |     2 |     64 |       108 |     126.12 |       149 |  49.27
+    19 |     4 |     64 |       111 |     127.52 |       146 |  49.81
+    20 |     1 |     64 |       112 |     130.31 |       147 |  50.90
+    20 |     2 |     64 |       110 |     127.59 |       143 |  49.84
+    20 |     4 |     64 |       111 |     128.52 |       150 |  50.20
+    21 |     1 |     64 |       111 |     128.62 |       153 |  50.24
+    21 |     2 |     64 |       115 |     128.84 |       149 |  50.33
+    21 |     4 |     64 |       107 |     127.39 |       143 |  49.76
+    22 |     1 |     64 |       105 |     126.16 |       146 |  49.28
+    22 |     2 |     64 |       110 |     128.83 |       147 |  50.32
+    22 |     4 |     64 |       112 |     129.14 |       145 |  50.45
+    23 |     1 |     64 |       113 |     128.55 |       148 |  50.21
+    23 |     2 |     64 |       103 |     127.11 |       145 |  49.65
+    23 |     4 |     64 |       113 |     130.00 |       148 |  50.78
+    24 |     1 |     64 |       111 |     128.77 |       151 |  50.30
+    24 |     2 |     64 |       111 |     127.59 |       144 |  49.84
+    24 |     4 |     64 |       111 |     126.59 |       146 |  49.45
+    25 |     1 |     64 |       109 |     128.22 |       154 |  50.09
+    25 |     2 |     64 |       113 |     130.34 |       155 |  50.92
+    25 |     4 |     64 |       109 |     126.91 |       151 |  49.57
+    26 |     1 |     64 |       116 |     127.73 |       144 |  49.90
+    26 |     2 |     64 |       109 |     127.45 |       148 |  49.79
+    26 |     4 |     64 |       110 |     126.78 |       139 |  49.52
+    27 |     1 |     64 |       116 |     129.92 |       145 |  50.75
+    27 |     2 |     64 |       105 |     128.06 |       151 |  50.02
+    27 |     4 |     64 |       104 |     127.88 |       145 |  49.95
+    28 |     1 |     64 |       108 |     127.33 |       143 |  49.74
+    28 |     2 |     64 |       109 |     127.12 |       144 |  49.66
+    28 |     4 |     64 |       109 |     127.91 |       142 |  49.96
+    29 |     1 |     64 |       109 |     128.02 |       145 |  50.01
+    29 |     2 |     64 |       110 |     126.98 |       145 |  49.60
+    29 |     4 |     64 |       113 |     127.22 |       151 |  49.69
+    30 |     1 |     64 |       107 |     128.61 |       147 |  50.24
+    30 |     2 |     64 |       115 |     129.09 |       143 |  50.43
+    30 |     4 |     64 |       107 |     127.98 |       154 |  49.99
+    31 |     1 |     64 |       109 |     127.67 |       142 |  49.87
+    31 |     2 |     64 |       113 |     126.42 |       157 |  49.38
+    31 |     4 |     64 |       105 |     126.66 |       144 |  49.48
+    32 |     1 |     64 |       112 |     127.12 |       151 |  49.66
+    32 |     2 |     64 |       110 |     128.09 |       144 |  50.04
+    32 |     4 |     64 |       107 |     126.98 |       142 |  49.60
+    33 |     1 |     64 |       109 |     128.44 |       149 |  50.17
+    33 |     2 |     64 |       112 |     128.25 |       147 |  50.10
+    33 |     4 |     64 |       108 |     128.42 |       145 |  50.16
+    34 |     1 |     64 |       110 |     128.00 |       148 |  50.00
+    34 |     2 |     64 |       108 |     128.11 |       142 |  50.04
+    34 |     4 |     64 |       112 |     128.56 |       145 |  50.22
+    35 |     1 |     64 |       106 |     126.67 |       147 |  49.48
+    35 |     2 |     64 |       112 |     128.44 |       146 |  50.17
+    35 |     4 |     64 |       112 |     128.83 |       153 |  50.32
+    36 |     1 |     64 |       106 |     126.66 |       145 |  49.48
+    36 |     2 |     64 |       112 |     128.34 |       149 |  50.13
+    36 |     4 |     64 |       106 |     127.78 |       145 |  49.91
+    37 |     1 |     64 |       112 |     127.45 |       146 |  49.79
+    37 |     2 |     64 |       109 |     126.58 |       145 |  49.44
+    37 |     4 |     64 |       113 |     127.70 |       145 |  49.88
+    38 |     1 |     64 |       112 |     128.61 |       144 |  50.24
+    38 |     2 |     64 |       113 |     128.36 |       145 |  50.14
+    38 |     4 |     64 |       112 |     128.41 |       151 |  50.16
+    39 |     1 |     64 |       113 |     128.44 |       151 |  50.17
+    39 |     2 |     64 |       103 |     128.09 |       149 |  50.04
+    39 |     4 |     64 |       111 |     128.17 |       142 |  50.07
+    40 |     1 |     64 |       108 |     127.48 |       143 |  49.80
+    40 |     2 |     64 |       111 |     127.98 |       142 |  49.99
+    40 |     4 |     64 |       104 |     127.73 |       142 |  49.90
+    41 |     1 |     64 |       111 |     130.23 |       147 |  50.87
+    41 |     2 |     64 |       105 |     128.78 |       146 |  50.31
+    41 |     4 |     64 |       102 |     127.59 |       150 |  49.84
+    42 |     1 |     64 |       105 |     127.77 |       146 |  49.91
+    42 |     2 |     64 |       109 |     126.92 |       145 |  49.58
+    42 |     4 |     64 |       112 |     128.41 |       148 |  50.16
+    43 |     1 |     64 |       111 |     127.50 |       147 |  49.80
+    43 |     2 |     64 |       113 |     128.55 |       150 |  50.21
+    43 |     4 |     64 |       108 |     127.16 |       147 |  49.67
+    44 |     1 |     64 |       109 |     129.11 |       146 |  50.43
+    44 |     2 |     64 |       112 |     126.62 |       145 |  49.46
+    44 |     4 |     64 |       113 |     128.78 |       149 |  50.31
+    45 |     1 |     64 |       113 |     127.75 |       147 |  49.90
+    45 |     2 |     64 |       105 |     128.69 |       144 |  50.27
+    45 |     4 |     64 |       111 |     126.53 |       143 |  49.43
+    46 |     1 |     64 |       112 |     126.78 |       148 |  49.52
+    46 |     2 |     64 |       106 |     128.75 |       151 |  50.29
+    46 |     4 |     64 |       110 |     127.59 |       152 |  49.84
+    47 |     1 |     64 |       114 |     128.89 |       146 |  50.35
+    47 |     2 |     64 |       111 |     126.75 |       140 |  49.51
+    47 |     4 |     64 |       110 |     127.72 |       144 |  49.89
+    48 |     1 |     64 |       108 |     127.84 |       144 |  49.94
+    48 |     2 |     64 |       111 |     128.28 |       146 |  50.11
+    48 |     4 |     64 |       107 |     127.91 |       144 |  49.96
+
+== Differential characteristic search ==
+Searches fixed input-difference patterns and reports the lowest mean output difference.
+tested characteristics: 4608
+rounds=1 flips=1 best_mean=125.98 bits min=102 max=143 positions=[239]
+rounds=1 flips=2 best_mean=126.30 bits min=110 max=143 positions=[187,230]
+rounds=1 flips=4 best_mean=126.16 bits min=110 max=148 positions=[13,39,156,172]
+rounds=2 flips=1 best_mean=125.95 bits min=110 max=143 positions=[194]
+rounds=2 flips=2 best_mean=126.19 bits min=111 max=144 positions=[141,145]
+rounds=2 flips=4 best_mean=126.30 bits min=112 max=143 positions=[67,183,232,245]
+rounds=3 flips=1 best_mean=125.56 bits min=110 max=142 positions=[120]
+rounds=3 flips=2 best_mean=125.55 bits min=107 max=150 positions=[52,225]
+rounds=3 flips=4 best_mean=127.20 bits min=108 max=147 positions=[16,101,110,234]
+rounds=4 flips=1 best_mean=126.22 bits min=109 max=140 positions=[151]
+rounds=4 flips=2 best_mean=125.84 bits min=109 max=143 positions=[101,136]
+rounds=4 flips=4 best_mean=125.86 bits min=112 max=143 positions=[17,102,120,179]
+rounds=5 flips=1 best_mean=125.80 bits min=110 max=144 positions=[37]
+rounds=5 flips=2 best_mean=124.89 bits min=104 max=142 positions=[145,189]
+rounds=5 flips=4 best_mean=125.73 bits min=111 max=140 positions=[24,95,136,233]
+rounds=6 flips=1 best_mean=126.16 bits min=110 max=140 positions=[230]
+rounds=6 flips=2 best_mean=125.91 bits min=107 max=149 positions=[16,52]
+rounds=6 flips=4 best_mean=125.83 bits min=104 max=147 positions=[51,158,169,184]
+rounds=7 flips=1 best_mean=126.36 bits min=104 max=149 positions=[88]
+rounds=7 flips=2 best_mean=126.36 bits min=103 max=146 positions=[5,162]
+rounds=7 flips=4 best_mean=125.03 bits min=110 max=144 positions=[11,111,114,249]
+rounds=8 flips=1 best_mean=125.88 bits min=106 max=141 positions=[174]
+rounds=8 flips=2 best_mean=126.80 bits min=108 max=144 positions=[183,213]
+rounds=8 flips=4 best_mean=125.72 bits min=107 max=142 positions=[41,84,104,249]
+rounds=9 flips=1 best_mean=126.73 bits min=109 max=139 positions=[56]
+rounds=9 flips=2 best_mean=126.45 bits min=106 max=143 positions=[26,211]
+rounds=9 flips=4 best_mean=125.97 bits min=103 max=148 positions=[58,137,141,200]
+rounds=10 flips=1 best_mean=126.86 bits min=108 max=141 positions=[174]
+rounds=10 flips=2 best_mean=125.81 bits min=106 max=143 positions=[112,125]
+rounds=10 flips=4 best_mean=126.23 bits min=106 max=144 positions=[12,102,156,229]
+rounds=11 flips=1 best_mean=126.17 bits min=113 max=146 positions=[44]
+rounds=11 flips=2 best_mean=125.67 bits min=107 max=140 positions=[30,137]
+rounds=11 flips=4 best_mean=126.23 bits min=108 max=144 positions=[63,187,197,206]
+rounds=12 flips=1 best_mean=125.33 bits min=110 max=144 positions=[131]
+rounds=12 flips=2 best_mean=125.36 bits min=107 max=140 positions=[52,139]
+rounds=12 flips=4 best_mean=125.73 bits min=99 max=144 positions=[9,126,198,203]
+rounds=13 flips=1 best_mean=126.11 bits min=109 max=143 positions=[148]
+rounds=13 flips=2 best_mean=126.16 bits min=111 max=146 positions=[107,212]
+rounds=13 flips=4 best_mean=125.89 bits min=110 max=145 positions=[0,98,254,255]
+rounds=14 flips=1 best_mean=125.94 bits min=113 max=144 positions=[252]
+rounds=14 flips=2 best_mean=125.20 bits min=109 max=146 positions=[60,164]
+rounds=14 flips=4 best_mean=125.19 bits min=106 max=146 positions=[72,200,216,220]
+rounds=15 flips=1 best_mean=126.42 bits min=110 max=143 positions=[104]
+rounds=15 flips=2 best_mean=126.02 bits min=111 max=136 positions=[127,242]
+rounds=15 flips=4 best_mean=125.73 bits min=114 max=140 positions=[38,54,65,121]
+rounds=16 flips=1 best_mean=125.89 bits min=105 max=138 positions=[27]
+rounds=16 flips=2 best_mean=125.50 bits min=109 max=142 positions=[131,237]
+rounds=16 flips=4 best_mean=125.44 bits min=106 max=143 positions=[64,97,166,226]
+rounds=17 flips=1 best_mean=125.91 bits min=109 max=145 positions=[193]
+rounds=17 flips=2 best_mean=125.75 bits min=110 max=146 positions=[80,215]
+rounds=17 flips=4 best_mean=125.59 bits min=110 max=141 positions=[59,80,116,160]
+rounds=18 flips=1 best_mean=126.42 bits min=109 max=145 positions=[195]
+rounds=18 flips=2 best_mean=125.95 bits min=103 max=150 positions=[40,61]
+rounds=18 flips=4 best_mean=125.53 bits min=106 max=141 positions=[7,73,192,243]
+rounds=19 flips=1 best_mean=126.19 bits min=112 max=142 positions=[102]
+rounds=19 flips=2 best_mean=125.31 bits min=112 max=140 positions=[38,132]
+rounds=19 flips=4 best_mean=125.89 bits min=111 max=143 positions=[8,21,126,226]
+rounds=20 flips=1 best_mean=126.39 bits min=108 max=144 positions=[160]
+rounds=20 flips=2 best_mean=125.83 bits min=105 max=140 positions=[64,109]
+rounds=20 flips=4 best_mean=124.34 bits min=95 max=144 positions=[57,142,167,244]
+rounds=21 flips=1 best_mean=125.94 bits min=108 max=141 positions=[202]
+rounds=21 flips=2 best_mean=125.47 bits min=105 max=149 positions=[41,133]
+rounds=21 flips=4 best_mean=126.19 bits min=105 max=147 positions=[24,176,187,230]
+rounds=22 flips=1 best_mean=126.55 bits min=107 max=143 positions=[147]
+rounds=22 flips=2 best_mean=125.86 bits min=110 max=143 positions=[34,92]
+rounds=22 flips=4 best_mean=125.62 bits min=103 max=144 positions=[36,74,86,161]
+rounds=23 flips=1 best_mean=126.02 bits min=108 max=143 positions=[144]
+rounds=23 flips=2 best_mean=125.59 bits min=106 max=150 positions=[204,227]
+rounds=23 flips=4 best_mean=126.45 bits min=108 max=148 positions=[19,86,173,237]
+rounds=24 flips=1 best_mean=126.17 bits min=104 max=141 positions=[220]
+rounds=24 flips=2 best_mean=125.30 bits min=110 max=143 positions=[130,147]
+rounds=24 flips=4 best_mean=125.94 bits min=107 max=144 positions=[58,64,143,244]
+rounds=25 flips=1 best_mean=125.23 bits min=106 max=145 positions=[39]
+rounds=25 flips=2 best_mean=125.89 bits min=110 max=144 positions=[112,250]
+rounds=25 flips=4 best_mean=126.38 bits min=112 max=144 positions=[61,74,116,153]
+rounds=26 flips=1 best_mean=126.34 bits min=110 max=146 positions=[148]
+rounds=26 flips=2 best_mean=126.05 bits min=110 max=142 positions=[79,142]
+rounds=26 flips=4 best_mean=126.42 bits min=99 max=145 positions=[43,202,211,255]
+rounds=27 flips=1 best_mean=126.58 bits min=105 max=148 positions=[94]
+rounds=27 flips=2 best_mean=126.17 bits min=104 max=147 positions=[76,92]
+rounds=27 flips=4 best_mean=125.72 bits min=103 max=140 positions=[22,66,120,184]
+rounds=28 flips=1 best_mean=126.02 bits min=106 max=147 positions=[8]
+rounds=28 flips=2 best_mean=125.17 bits min=110 max=143 positions=[130,149]
+rounds=28 flips=4 best_mean=126.30 bits min=108 max=143 positions=[16,23,56,91]
+rounds=29 flips=1 best_mean=126.14 bits min=110 max=140 positions=[66]
+rounds=29 flips=2 best_mean=126.39 bits min=111 max=150 positions=[102,219]
+rounds=29 flips=4 best_mean=125.89 bits min=110 max=147 positions=[9,90,215,234]
+rounds=30 flips=1 best_mean=125.84 bits min=109 max=147 positions=[195]
+rounds=30 flips=2 best_mean=125.03 bits min=107 max=140 positions=[10,35]
+rounds=30 flips=4 best_mean=126.19 bits min=107 max=149 positions=[62,189,198,211]
+rounds=31 flips=1 best_mean=126.42 bits min=106 max=140 positions=[224]
+rounds=31 flips=2 best_mean=126.14 bits min=106 max=143 positions=[83,106]
+rounds=31 flips=4 best_mean=125.19 bits min=105 max=146 positions=[9,26,67,251]
+rounds=32 flips=1 best_mean=125.53 bits min=106 max=146 positions=[125]
+rounds=32 flips=2 best_mean=125.12 bits min=103 max=145 positions=[123,163]
+rounds=32 flips=4 best_mean=124.55 bits min=102 max=141 positions=[18,206,218,242]
+rounds=33 flips=1 best_mean=125.88 bits min=104 max=140 positions=[248]
+rounds=33 flips=2 best_mean=125.44 bits min=106 max=142 positions=[23,212]
+rounds=33 flips=4 best_mean=125.80 bits min=106 max=146 positions=[61,107,116,245]
+rounds=34 flips=1 best_mean=126.56 bits min=105 max=148 positions=[206]
+rounds=34 flips=2 best_mean=125.88 bits min=111 max=142 positions=[130,235]
+rounds=34 flips=4 best_mean=125.52 bits min=106 max=151 positions=[75,124,233,243]
+rounds=35 flips=1 best_mean=125.73 bits min=111 max=144 positions=[152]
+rounds=35 flips=2 best_mean=125.33 bits min=109 max=146 positions=[155,201]
+rounds=35 flips=4 best_mean=126.50 bits min=106 max=147 positions=[28,77,204,215]
+rounds=36 flips=1 best_mean=125.72 bits min=107 max=140 positions=[108]
+rounds=36 flips=2 best_mean=126.36 bits min=107 max=148 positions=[59,118]
+rounds=36 flips=4 best_mean=126.30 bits min=110 max=149 positions=[47,107,142,164]
+rounds=37 flips=1 best_mean=125.86 bits min=102 max=139 positions=[169]
+rounds=37 flips=2 best_mean=126.42 bits min=109 max=142 positions=[25,38]
+rounds=37 flips=4 best_mean=125.94 bits min=107 max=155 positions=[6,50,70,102]
+rounds=38 flips=1 best_mean=125.17 bits min=106 max=146 positions=[230]
+rounds=38 flips=2 best_mean=126.52 bits min=104 max=144 positions=[29,70]
+rounds=38 flips=4 best_mean=126.17 bits min=107 max=147 positions=[15,44,85,208]
+rounds=39 flips=1 best_mean=126.05 bits min=110 max=148 positions=[166]
+rounds=39 flips=2 best_mean=125.83 bits min=110 max=144 positions=[58,227]
+rounds=39 flips=4 best_mean=125.16 bits min=107 max=141 positions=[130,171,217,251]
+rounds=40 flips=1 best_mean=126.52 bits min=111 max=144 positions=[92]
+rounds=40 flips=2 best_mean=126.64 bits min=111 max=140 positions=[7,76]
+rounds=40 flips=4 best_mean=125.09 bits min=111 max=145 positions=[99,102,142,190]
+rounds=41 flips=1 best_mean=126.09 bits min=104 max=144 positions=[251]
+rounds=41 flips=2 best_mean=125.00 bits min=105 max=149 positions=[25,114]
+rounds=41 flips=4 best_mean=126.38 bits min=111 max=142 positions=[133,217,220,231]
+rounds=42 flips=1 best_mean=126.20 bits min=105 max=153 positions=[62]
+rounds=42 flips=2 best_mean=125.73 bits min=108 max=141 positions=[68,116]
+rounds=42 flips=4 best_mean=126.12 bits min=112 max=145 positions=[32,35,138,189]
+rounds=43 flips=1 best_mean=126.39 bits min=109 max=149 positions=[122]
+rounds=43 flips=2 best_mean=126.17 bits min=104 max=149 positions=[187,216]
+rounds=43 flips=4 best_mean=125.58 bits min=104 max=144 positions=[70,109,116,132]
+rounds=44 flips=1 best_mean=126.08 bits min=110 max=143 positions=[83]
+rounds=44 flips=2 best_mean=125.61 bits min=107 max=145 positions=[154,234]
+rounds=44 flips=4 best_mean=126.12 bits min=113 max=145 positions=[8,36,131,147]
+rounds=45 flips=1 best_mean=125.09 bits min=111 max=138 positions=[105]
+rounds=45 flips=2 best_mean=125.30 bits min=111 max=142 positions=[130,184]
+rounds=45 flips=4 best_mean=126.17 bits min=110 max=147 positions=[134,143,186,202]
+rounds=46 flips=1 best_mean=125.78 bits min=104 max=143 positions=[247]
+rounds=46 flips=2 best_mean=126.23 bits min=107 max=150 positions=[18,245]
+rounds=46 flips=4 best_mean=126.39 bits min=88 max=144 positions=[24,51,147,172]
+rounds=47 flips=1 best_mean=126.45 bits min=107 max=148 positions=[244]
+rounds=47 flips=2 best_mean=126.14 bits min=112 max=144 positions=[30,214]
+rounds=47 flips=4 best_mean=126.44 bits min=112 max=145 positions=[77,95,124,176]
+rounds=48 flips=1 best_mean=126.44 bits min=105 max=147 positions=[229]
+rounds=48 flips=2 best_mean=125.03 bits min=107 max=139 positions=[68,242]
+rounds=48 flips=4 best_mean=125.91 bits min=111 max=145 positions=[7,115,155,193]
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks linear \
+  --linear-rounds 48 \
+  --linear-trials 5000 \
+  --threads 8
+Re-LWE Hash v2 Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Linear approximation bias test ==
+rounds=48, k=3, trials=5000, masks=64, message_bits=512, output_bits=256
+mean absolute linear bias: 0.00579
+max absolute linear bias: 0.01560 (2.21 sigma)
+top biased approximations:
+  mask= 26 prob=0.48440 bias=-0.01560 input=[5,121,352] output=[33,137,211,249]
+  mask= 17 prob=0.48480 bias=-0.01520 input=[139,314] output=[31,100,113,145]
+  mask= 51 prob=0.51340 bias=+0.01340 input=[86,94,159,221] output=[59,186]
+  mask=  7 prob=0.51200 bias=+0.01200 input=[73,268,421,461] output=[1,148,149]
+  mask= 18 prob=0.51120 bias=+0.01120 input=[289] output=[34,136,183,209]
+  mask= 47 prob=0.51100 bias=+0.01100 input=[100,318,370] output=[30,171,184,204]
+  mask= 60 prob=0.51100 bias=+0.01100 input=[73,274,282,452] output=[134,217]
+  mask= 22 prob=0.48940 bias=-0.01060 input=[69,193,213] output=[3,18,27]
+  mask= 30 prob=0.51040 bias=+0.01040 input=[8] output=[90]
+  mask= 12 prob=0.48980 bias=-0.01020 input=[128,201,342] output=[27,142]
+elapsed: 25.9s

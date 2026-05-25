@@ -1,0 +1,378 @@
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./benchmark --data-mb 10 --iteratio
+ns 100 --rounds 32 --compare-pure
+=== Re-LWE Hash Tree Hybrid Benchmark ===
+Data size per hash: 10 MB
+Iterations: 100
+Threads: 16
+Max leaves: 8
+Total processed: 0.98 GB
+Elapsed time: 11.050850482s
+Throughput: 90.49 MB/s
+
+=== Pure Re-LWE Hash Benchmark ===
+Data size per hash: 10 MB
+Iterations: 100
+Total processed: 0.98 GB
+Elapsed time: 8.541817025s
+Throughput: 117.07 MB/s
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./benchmark --data-mb 10 --iterations 100 --rounds 48 --compare-pure
+=== Re-LWE Hash Tree Hybrid Benchmark ===
+Data size per hash: 10 MB
+Iterations: 100
+Threads: 16
+Max leaves: 8
+Total processed: 0.98 GB
+Elapsed time: 11.852792304s
+Throughput: 84.37 MB/s
+
+=== Pure Re-LWE Hash Benchmark ===
+Data size per hash: 10 MB
+Iterations: 100
+Total processed: 0.98 GB
+Elapsed time: 9.214622726s
+Throughput: 108.52 MB/s
+
+---
+
+ skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks stat-avalanche --stat-avalanche-rounds 32 --stat-avalanche-trials 100000
+ --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test (eta=2) ==
+rounds: 32, k: 3, trials: 100000, output_bits: 256
+mean: 127.990 bits (49.996%)
+stddev: 7.996 bits
+min: 95 bits
+max: 161 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.52%
+Avalanche quality: Good
+elapsed: 10m14.071s
+
+Distribution histogram:
+ 92- 95:     1 
+ 96- 99:    15 
+100-103:    75 
+104-107:   423 #
+108-111:  1415 ####
+112-115:  3974 ##########
+116-119:  8452 #####################
+120-123: 14376 ####################################
+124-127: 18960 ###############################################
+128-131: 19363 ################################################
+132-135: 15530 ######################################
+136-139:  9863 ########################
+140-143:  4899 ############
+144-147:  1956 #####
+148-151:   557 #
+152-155:   110 
+156-159:    29 
+160-163:     2 
+164-167:     0 
+
+Bit independence test:
+output flip probability range: 0.4955..0.5041
+mean absolute bias from 0.5: 0.0012
+max absolute bias from 0.5: 0.0045
+worst output bits:
+  out_bit= 52 flip_prob=0.4955 bias=-0.0045
+  out_bit=166 flip_prob=0.5041 bias=+0.0041
+  out_bit=174 flip_prob=0.4960 bias=-0.0040
+  out_bit=251 flip_prob=0.5040 bias=+0.0040
+  out_bit= 27 flip_prob=0.4963 bias=-0.0037
+  out_bit=135 flip_prob=0.4965 bias=-0.0035
+  out_bit=162 flip_prob=0.4965 bias=-0.0035
+  out_bit= 84 flip_prob=0.5032 bias=+0.0032
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit= 35 out_bit=178 n= 389 prob=0.6118 z=4.41
+  in_bit=  8 out_bit= 60 n= 406 prob=0.3916 z=4.37
+  in_bit= 60 out_bit=201 n= 389 prob=0.6093 z=4.31
+  in_bit=136 out_bit=239 n= 404 prob=0.6015 z=4.08
+  in_bit=234 out_bit=143 n= 415 prob=0.4000 z=4.07
+  in_bit=117 out_bit= 21 n= 377 prob=0.6048 z=4.07
+  in_bit=224 out_bit=103 n= 373 prob=0.6032 z=3.99
+  in_bit=117 out_bit=198 n= 377 prob=0.6021 z=3.97
+  in_bit=220 out_bit=188 n= 398 prob=0.5980 z=3.91
+  in_bit=111 out_bit=183 n= 397 prob=0.4030 z=3.86
+
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks stat-avalanche --stat-avalanche-rounds 48 --stat-avalanche-trials 100000
+ --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test (eta=2) ==
+rounds: 48, k: 3, trials: 100000, output_bits: 256
+mean: 127.992 bits (49.997%)
+stddev: 8.018 bits
+min: 88 bits
+max: 163 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.34%
+Avalanche quality: Good
+elapsed: 15m16.778s
+
+Distribution histogram:
+ 88- 91:     1 
+ 92- 95:     2 
+ 96- 99:    16 
+100-103:    84 
+104-107:   410 #
+108-111:  1495 ####
+112-115:  3954 ##########
+116-119:  8544 #####################
+120-123: 14082 ##################################
+124-127: 18917 ##############################################
+128-131: 19603 ################################################
+132-135: 15539 ######################################
+136-139:  9793 ########################
+140-143:  4911 ############
+144-147:  1881 #####
+148-151:   590 #
+152-155:   145 
+156-159:    30 
+160-163:     3 
+164-167:     0 
+
+Bit independence test:
+output flip probability range: 0.4942..0.5051
+mean absolute bias from 0.5: 0.0013
+max absolute bias from 0.5: 0.0058
+worst output bits:
+  out_bit=220 flip_prob=0.4942 bias=-0.0058
+  out_bit=236 flip_prob=0.5051 bias=+0.0051
+  out_bit= 61 flip_prob=0.5042 bias=+0.0042
+  out_bit= 43 flip_prob=0.4959 bias=-0.0041
+  out_bit=  5 flip_prob=0.5040 bias=+0.0040
+  out_bit=149 flip_prob=0.4964 bias=-0.0036
+  out_bit=251 flip_prob=0.5036 bias=+0.0036
+  out_bit=249 flip_prob=0.5035 bias=+0.0035
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit= 19 out_bit=230 n= 385 prob=0.3948 z=4.13
+  in_bit= 86 out_bit=190 n= 393 prob=0.6031 z=4.09
+  in_bit=  6 out_bit= 25 n= 360 prob=0.6056 z=4.01
+  in_bit=240 out_bit=240 n= 367 prob=0.3978 z=3.91
+  in_bit=178 out_bit=103 n= 387 prob=0.4005 z=3.91
+  in_bit=235 out_bit=251 n= 388 prob=0.5979 z=3.86
+  in_bit=157 out_bit=246 n= 380 prob=0.5974 z=3.80
+  in_bit=203 out_bit=102 n= 399 prob=0.4060 z=3.75
+  in_bit=246 out_bit=118 n= 402 prob=0.4080 z=3.69
+  in_bit= 38 out_bit=165 n= 395 prob=0.4076 z=3.67
+
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks birthday --birthday-rounds 32 --birthday-attempts 200000 --prefix-bits 32 --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=32, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Proper birthday attack on random messages (eta=2) ==
+[birthday rounds=32] workers=8, attempts=200000, prefix_bits=32
+[birthday rounds=32] Found 32-bit truncated collision after 80594 messages!
+  prefix:   32 bits
+  key:      bd300134
+  digest A: bd30013422b0e4eb1952a4e19a8653a769df299fa8ef256877181ec5fb8752c5
+  digest B: bd3001349762aca9ca36dd15283055226e020ec6cee785751628d4354bc077a5
+  msg A:    926ae8eb810bcc9c6fa23634c708615eea2690abc17a9ac67134343b379ed7991acca137ed5f988eff90cba70390dc43bba8f6b0bf4a9936525cf593a1d7d430f29a613dd3a8ec27d97d636fb217fd077ac21027706cba75a244b7351c689881433fa251474a147df6ba31
+  msg B:    63e14ce36550464636f958314cf07eba947929dbdd60f76e68fbedfec6c9c1cee25c7bf52c4085852ff8566cba68d4d9faf43566de24ec8a452f0d40c87146d953f04ed1800d61816c8392
+  elapsed:  4m25.746s
+
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks birthday --birthday-rounds 48 --birthday-attempts 200000 --prefix-bits 32 --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=32, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Proper birthday attack on random messages (eta=2) ==
+[birthday rounds=48] workers=8, attempts=200000, prefix_bits=32
+[birthday rounds=48] Found 32-bit truncated collision after 66140 messages!
+  prefix:   32 bits
+  key:      4bfc1ba2
+  digest A: 4bfc1ba2c5a3c7c5e5793a8e4cb86c9b2f7c8303b67fb71204b2d3c6fabbc999
+  digest B: 4bfc1ba2a31a8d351eacd25da74283122c2ca8d73ce74d15e277ad337c3e3f5b
+  msg A:    4aae51f16e53c69871d3b6ab2f262b26fc05b3e5e092d265577406d181a1ca93627d2acecfe245c5e479553a063729c44f673e8f4dfebacff1635c7c47f62f665581122dcf97c00198e9ed578cf4d9b733733804376765219cbe425e3bb345d7c8ac857d5f2ce53a
+  msg B:    3075c71b385bba8c7a9a1b00b60ce2cb23a78d409a227d9f4de5a4a6a9532c9beaa8e3632de34343f795cbc68ed355fb
+  elapsed:  5m26.857s
+
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks differential --differential-rounds 32 --differential-flips 1,2,4,8 --differential-trials 64 --differential-searches 64 --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Reduced-round differential characteristic search (eta=2) ==
+rounds=32, flips=1,2,4,8, candidates=64 per round/flip, trials=64 per candidate, workers=8
+
+Best low-weight differential characteristics:
+tested characteristics: 256
+rounds | flips | candidates | trials | best mean | min | max | positions
+-------+-------+------------+--------+-----------+-----+-----+----------
+    32 |     1 |         64 |     64 |    125.97 | 108 | 143 | [72]
+    32 |     2 |         64 |     64 |    126.22 | 106 | 141 | [18,120]
+    32 |     4 |         64 |     64 |    125.44 | 105 | 141 | [51,158,184,201]
+    32 |     8 |         64 |     64 |    126.16 | 105 | 145 | [42,61,63,95,110,143,208,240]
+
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks differential --differential-rounds 48 --differential-flips 1,2,4,8 --differential-trials 64 --differential-searches 64 --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Reduced-round differential characteristic search (eta=2) ==
+rounds=48, flips=1,2,4,8, candidates=64 per round/flip, trials=64 per candidate, workers=8
+
+Best low-weight differential characteristics:
+tested characteristics: 256
+rounds | flips | candidates | trials | best mean | min | max | positions
+-------+-------+------------+--------+-----------+-----+-----+----------
+    48 |     1 |         64 |     64 |    125.84 | 113 | 142 | [154]
+    48 |     2 |         64 |     64 |    125.86 | 109 | 144 | [135,217]
+    48 |     4 |         64 |     64 |    126.00 | 108 | 147 | [46,68,104,122]
+    48 |     8 |         64 |     64 |    125.30 | 107 | 142 | [70,139,146,169,178,223,243,254]
+
+---
+(50만개 기준 avalanche)
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks stat-avalanche --stat-avalanche-rounds 32 --stat-avalanche-trials 500000 --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test (eta=2) ==
+rounds: 32, k: 3, trials: 500000, output_bits: 256
+mean: 128.007 bits (50.003%)
+stddev: 7.994 bits
+min: 92 bits
+max: 165 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.59%
+Avalanche quality: Good
+elapsed: 50m18.568s
+
+Distribution histogram:
+ 92- 95:     8 
+ 96- 99:    81 
+100-103:   468 
+104-107:  1989 #
+108-111:  7113 ####
+112-115: 19685 ##########
+116-119: 42411 #####################
+120-123: 71558 ####################################
+124-127: 94331 ###############################################
+128-131: 96614 ################################################
+132-135: 78631 #######################################
+136-139: 49544 #########################
+140-143: 24517 ############
+144-147:  9447 #####
+148-151:  2767 #
+152-155:   677 
+156-159:   138 
+160-163:    20 
+164-167:     1 
+168-171:     0 
+
+Bit independence test:
+output flip probability range: 0.4983..0.5019
+mean absolute bias from 0.5: 0.0005
+max absolute bias from 0.5: 0.0019
+worst output bits:
+  out_bit= 37 flip_prob=0.5019 bias=+0.0019
+  out_bit= 56 flip_prob=0.5018 bias=+0.0018
+  out_bit=113 flip_prob=0.4983 bias=-0.0017
+  out_bit=246 flip_prob=0.5017 bias=+0.0017
+  out_bit=239 flip_prob=0.4984 bias=-0.0016
+  out_bit=150 flip_prob=0.4984 bias=-0.0016
+  out_bit= 27 flip_prob=0.4984 bias=-0.0016
+  out_bit=170 flip_prob=0.4984 bias=-0.0016
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit=103 out_bit=127 n=1964 prob=0.4526 z=4.20
+  in_bit= 33 out_bit=207 n=1982 prob=0.5454 z=4.04
+  in_bit=243 out_bit= 70 n=1896 prob=0.5454 z=3.95
+  in_bit= 63 out_bit=190 n=1942 prob=0.4552 z=3.95
+  in_bit=161 out_bit=144 n=1916 prob=0.5449 z=3.93
+  in_bit=145 out_bit=141 n=1954 prob=0.5440 z=3.89
+  in_bit= 21 out_bit=186 n=1890 prob=0.5444 z=3.86
+  in_bit=168 out_bit=208 n=1995 prob=0.5429 z=3.83
+  in_bit= 93 out_bit= 98 n=1963 prob=0.5430 z=3.81
+  in_bit=232 out_bit=239 n=1883 prob=0.5438 z=3.80
+---
+
+(base) skldghk@DESKTOP-917V6NN:~/Cryptography/go$ go run ./cmd/relweattack --attacks stat-avalanche --stat-avalanche-rounds 48 --stat-avalanche-trials 500000
+ --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36, eta=2
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Statistical avalanche test (eta=2) ==
+rounds: 48, k: 3, trials: 500000, output_bits: 256
+mean: 128.003 bits (50.001%)
+stddev: 8.001 bits
+min: 91 bits
+max: 167 bits
+45~55% range: 115..140 changed bits
+45~55% ratio: 89.53%
+Avalanche quality: Good
+elapsed: 1h14m27.908s
+
+Distribution histogram:
+ 88- 91:     1 
+ 92- 95:     4 
+ 96- 99:    85 
+100-103:   444 
+104-107:  2066 #
+108-111:  7075 ####
+112-115: 19693 ##########
+116-119: 42417 #####################
+120-123: 71686 ####################################
+124-127: 94231 ###############################################
+128-131: 96909 ################################################
+132-135: 78241 #######################################
+136-139: 49492 #########################
+140-143: 24433 ############
+144-147:  9604 #####
+148-151:  2794 #
+152-155:   663 
+156-159:   131 
+160-163:    27 
+164-167:     4 
+168-171:     0 
+
+Bit independence test:
+output flip probability range: 0.4978..0.5023
+mean absolute bias from 0.5: 0.0006
+max absolute bias from 0.5: 0.0023
+worst output bits:
+  out_bit=133 flip_prob=0.5023 bias=+0.0023
+  out_bit= 90 flip_prob=0.4978 bias=-0.0022
+  out_bit=168 flip_prob=0.4980 bias=-0.0020
+  out_bit=188 flip_prob=0.5018 bias=+0.0018
+  out_bit=195 flip_prob=0.5017 bias=+0.0017
+  out_bit= 91 flip_prob=0.4983 bias=-0.0017
+  out_bit=125 flip_prob=0.5016 bias=+0.0016
+  out_bit=244 flip_prob=0.5016 bias=+0.0016
+
+Input/output bit dependence test:
+highest conditional deviations P(output bit flips | input bit flipped):
+  in_bit=249 out_bit=181 n=1922 prob=0.5588 z=5.16
+  in_bit= 83 out_bit=234 n=1899 prob=0.4418 z=5.07
+  in_bit=133 out_bit= 15 n=1935 prob=0.5576 z=5.07
+  in_bit= 85 out_bit= 17 n=2025 prob=0.5486 z=4.38
+  in_bit=107 out_bit= 33 n=1875 prob=0.5499 z=4.32
+  in_bit= 12 out_bit= 43 n=1930 prob=0.4534 z=4.10
+  in_bit= 61 out_bit= 70 n=1936 prob=0.4535 z=4.09
+  in_bit=156 out_bit= 40 n=1961 prob=0.4559 z=3.91
+  in_bit= 57 out_bit=159 n=1967 prob=0.5440 z=3.90
+  in_bit=129 out_bit= 58 n=1982 prob=0.5434 z=3.86

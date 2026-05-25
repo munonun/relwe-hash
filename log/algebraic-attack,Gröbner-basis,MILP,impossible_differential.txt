@@ -1,0 +1,339 @@
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks milp \
+  --milp-rounds 1,2,4,8,12,16 \
+  --milp-message-bits 32 \
+  --milp-output-bits 32
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== MILP-style active-bit differential propagation ==
+core: mini ARX feedback core, export/estimate only
+message_bits=32 output_bits=32 candidates=528 timeout_hint=30s
+rounds | variables | constraints | min active bits | best input diff | warning
+-------+-----------+-------------+-----------------+-----------------+--------
+     1 |       120 |         176 |               0 | 0x0000000000000100 | Potential weak differential propagation
+     2 |       176 |         320 |               0 | 0x0000000000000100 | Potential weak differential propagation
+     4 |       288 |         608 |               0 | 0x0000000000000100 | Potential weak differential propagation
+     8 |       512 |        1184 |               0 | 0x0000000000000100 | Potential weak differential propagation
+    12 |       736 |        1760 |               0 | 0x0000000000000100 | Potential weak differential propagation
+    16 |       960 |        2336 |               0 | 0x0000000000000100 | Potential weak differential propagation
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks algebraic \
+  --algebraic-rounds 1,2,4,8,12,16,24,32 \
+  --algebraic-message-bits 32 \
+  --algebraic-output-bits 32
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Algebraic degree propagation estimate ==
+core: mini ARX feedback core, degree-only ANF approximation
+message_bits=32 output_bits=32 timeout_hint=30s
+rounds | max degree | mean degree | expected cap | warning
+-------+------------+-------------+--------------+--------
+     1 |         32 |       20.88 |            2 | 
+     2 |         32 |       32.00 |            4 | 
+     4 |         32 |       32.00 |           16 | 
+     8 |         32 |       32.00 |           32 | 
+    12 |         32 |       32.00 |           32 | 
+    16 |         32 |       32.00 |           32 | 
+    24 |         32 |       32.00 |           32 | 
+    32 |         32 |       32.00 |           32 | 
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks impossible \
+  --impossible-rounds 4,6,8,12 \
+  --impossible-message-bits 32 \
+  --impossible-output-bits 32 \
+  --impossible-candidates 16
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Impossible differential SMT-LIB2 export ==
+core: mini ARX feedback core, QF_BV, export only
+message_bits=32 output_bits=32 candidates_per_round=16
+rounds | candidate | variables | constraints | input diff | output diff | file
+-------+-----------+-----------+-------------+------------+-------------+-----
+     4 |         0 |         1 |           1 | 0x0000000000000001 | 0x00000001 | out/smt/impossible_r4_m32_o32_c00.smt2
+     4 |         1 |         1 |           1 | 0x0000000000000002 | 0x00000002 | out/smt/impossible_r4_m32_o32_c01.smt2
+     4 |         2 |         1 |           1 | 0x0000000000000004 | 0x00000004 | out/smt/impossible_r4_m32_o32_c02.smt2
+     4 |         3 |         1 |           1 | 0x0000000000000008 | 0x00000008 | out/smt/impossible_r4_m32_o32_c03.smt2
+     4 |         4 |         1 |           1 | 0x0000000000000010 | 0x00000010 | out/smt/impossible_r4_m32_o32_c04.smt2
+     4 |         5 |         1 |           1 | 0x0000000000000020 | 0x00000020 | out/smt/impossible_r4_m32_o32_c05.smt2
+     4 |         6 |         1 |           1 | 0x0000000000000040 | 0x00000040 | out/smt/impossible_r4_m32_o32_c06.smt2
+     4 |         7 |         1 |           1 | 0x0000000000000080 | 0x00000080 | out/smt/impossible_r4_m32_o32_c07.smt2
+     4 |         8 |         1 |           1 | 0x0000000000000100 | 0x00000100 | out/smt/impossible_r4_m32_o32_c08.smt2
+     4 |         9 |         1 |           1 | 0x0000000000000200 | 0x00000200 | out/smt/impossible_r4_m32_o32_c09.smt2
+     4 |        10 |         1 |           1 | 0x0000000000000400 | 0x00000400 | out/smt/impossible_r4_m32_o32_c10.smt2
+     4 |        11 |         1 |           1 | 0x0000000000000800 | 0x00000800 | out/smt/impossible_r4_m32_o32_c11.smt2
+     4 |        12 |         1 |           1 | 0x0000000000001000 | 0x00001000 | out/smt/impossible_r4_m32_o32_c12.smt2
+     4 |        13 |         1 |           1 | 0x0000000000002000 | 0x00002000 | out/smt/impossible_r4_m32_o32_c13.smt2
+     4 |        14 |         1 |           1 | 0x0000000000004000 | 0x00004000 | out/smt/impossible_r4_m32_o32_c14.smt2
+     4 |        15 |         1 |           1 | 0x0000000000008000 | 0x00008000 | out/smt/impossible_r4_m32_o32_c15.smt2
+     6 |         0 |         1 |           1 | 0x0000000000000001 | 0x00000001 | out/smt/impossible_r6_m32_o32_c00.smt2
+     6 |         1 |         1 |           1 | 0x0000000000000002 | 0x00000002 | out/smt/impossible_r6_m32_o32_c01.smt2
+     6 |         2 |         1 |           1 | 0x0000000000000004 | 0x00000004 | out/smt/impossible_r6_m32_o32_c02.smt2
+     6 |         3 |         1 |           1 | 0x0000000000000008 | 0x00000008 | out/smt/impossible_r6_m32_o32_c03.smt2
+     6 |         4 |         1 |           1 | 0x0000000000000010 | 0x00000010 | out/smt/impossible_r6_m32_o32_c04.smt2
+     6 |         5 |         1 |           1 | 0x0000000000000020 | 0x00000020 | out/smt/impossible_r6_m32_o32_c05.smt2
+     6 |         6 |         1 |           1 | 0x0000000000000040 | 0x00000040 | out/smt/impossible_r6_m32_o32_c06.smt2
+     6 |         7 |         1 |           1 | 0x0000000000000080 | 0x00000080 | out/smt/impossible_r6_m32_o32_c07.smt2
+     6 |         8 |         1 |           1 | 0x0000000000000100 | 0x00000100 | out/smt/impossible_r6_m32_o32_c08.smt2
+     6 |         9 |         1 |           1 | 0x0000000000000200 | 0x00000200 | out/smt/impossible_r6_m32_o32_c09.smt2
+     6 |        10 |         1 |           1 | 0x0000000000000400 | 0x00000400 | out/smt/impossible_r6_m32_o32_c10.smt2
+     6 |        11 |         1 |           1 | 0x0000000000000800 | 0x00000800 | out/smt/impossible_r6_m32_o32_c11.smt2
+     6 |        12 |         1 |           1 | 0x0000000000001000 | 0x00001000 | out/smt/impossible_r6_m32_o32_c12.smt2
+     6 |        13 |         1 |           1 | 0x0000000000002000 | 0x00002000 | out/smt/impossible_r6_m32_o32_c13.smt2
+     6 |        14 |         1 |           1 | 0x0000000000004000 | 0x00004000 | out/smt/impossible_r6_m32_o32_c14.smt2
+     6 |        15 |         1 |           1 | 0x0000000000008000 | 0x00008000 | out/smt/impossible_r6_m32_o32_c15.smt2
+     8 |         0 |         1 |           1 | 0x0000000000000001 | 0x00000001 | out/smt/impossible_r8_m32_o32_c00.smt2
+     8 |         1 |         1 |           1 | 0x0000000000000002 | 0x00000002 | out/smt/impossible_r8_m32_o32_c01.smt2
+     8 |         2 |         1 |           1 | 0x0000000000000004 | 0x00000004 | out/smt/impossible_r8_m32_o32_c02.smt2
+     8 |         3 |         1 |           1 | 0x0000000000000008 | 0x00000008 | out/smt/impossible_r8_m32_o32_c03.smt2
+     8 |         4 |         1 |           1 | 0x0000000000000010 | 0x00000010 | out/smt/impossible_r8_m32_o32_c04.smt2
+     8 |         5 |         1 |           1 | 0x0000000000000020 | 0x00000020 | out/smt/impossible_r8_m32_o32_c05.smt2
+     8 |         6 |         1 |           1 | 0x0000000000000040 | 0x00000040 | out/smt/impossible_r8_m32_o32_c06.smt2
+     8 |         7 |         1 |           1 | 0x0000000000000080 | 0x00000080 | out/smt/impossible_r8_m32_o32_c07.smt2
+     8 |         8 |         1 |           1 | 0x0000000000000100 | 0x00000100 | out/smt/impossible_r8_m32_o32_c08.smt2
+     8 |         9 |         1 |           1 | 0x0000000000000200 | 0x00000200 | out/smt/impossible_r8_m32_o32_c09.smt2
+     8 |        10 |         1 |           1 | 0x0000000000000400 | 0x00000400 | out/smt/impossible_r8_m32_o32_c10.smt2
+     8 |        11 |         1 |           1 | 0x0000000000000800 | 0x00000800 | out/smt/impossible_r8_m32_o32_c11.smt2
+     8 |        12 |         1 |           1 | 0x0000000000001000 | 0x00001000 | out/smt/impossible_r8_m32_o32_c12.smt2
+     8 |        13 |         1 |           1 | 0x0000000000002000 | 0x00002000 | out/smt/impossible_r8_m32_o32_c13.smt2
+     8 |        14 |         1 |           1 | 0x0000000000004000 | 0x00004000 | out/smt/impossible_r8_m32_o32_c14.smt2
+     8 |        15 |         1 |           1 | 0x0000000000008000 | 0x00008000 | out/smt/impossible_r8_m32_o32_c15.smt2
+    12 |         0 |         1 |           1 | 0x0000000000000001 | 0x00000001 | out/smt/impossible_r12_m32_o32_c00.smt2
+    12 |         1 |         1 |           1 | 0x0000000000000002 | 0x00000002 | out/smt/impossible_r12_m32_o32_c01.smt2
+    12 |         2 |         1 |           1 | 0x0000000000000004 | 0x00000004 | out/smt/impossible_r12_m32_o32_c02.smt2
+    12 |         3 |         1 |           1 | 0x0000000000000008 | 0x00000008 | out/smt/impossible_r12_m32_o32_c03.smt2
+    12 |         4 |         1 |           1 | 0x0000000000000010 | 0x00000010 | out/smt/impossible_r12_m32_o32_c04.smt2
+    12 |         5 |         1 |           1 | 0x0000000000000020 | 0x00000020 | out/smt/impossible_r12_m32_o32_c05.smt2
+    12 |         6 |         1 |           1 | 0x0000000000000040 | 0x00000040 | out/smt/impossible_r12_m32_o32_c06.smt2
+    12 |         7 |         1 |           1 | 0x0000000000000080 | 0x00000080 | out/smt/impossible_r12_m32_o32_c07.smt2
+    12 |         8 |         1 |           1 | 0x0000000000000100 | 0x00000100 | out/smt/impossible_r12_m32_o32_c08.smt2
+    12 |         9 |         1 |           1 | 0x0000000000000200 | 0x00000200 | out/smt/impossible_r12_m32_o32_c09.smt2
+    12 |        10 |         1 |           1 | 0x0000000000000400 | 0x00000400 | out/smt/impossible_r12_m32_o32_c10.smt2
+    12 |        11 |         1 |           1 | 0x0000000000000800 | 0x00000800 | out/smt/impossible_r12_m32_o32_c11.smt2
+    12 |        12 |         1 |           1 | 0x0000000000001000 | 0x00001000 | out/smt/impossible_r12_m32_o32_c12.smt2
+    12 |        13 |         1 |           1 | 0x0000000000002000 | 0x00002000 | out/smt/impossible_r12_m32_o32_c13.smt2
+    12 |        14 |         1 |           1 | 0x0000000000004000 | 0x00004000 | out/smt/impossible_r12_m32_o32_c14.smt2
+    12 |        15 |         1 |           1 | 0x0000000000008000 | 0x00008000 | out/smt/impossible_r12_m32_o32_c15.smt2
+solver suggestion: z3 -T:30 out/smt/impossible_r<round>_m32_o32_c00.smt2
+interpretation: z3 returns UNSAT => impossible differential candidate for that mini-core case
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ for f in out/smt/*.smt2; do
+  name=$(basename "$f" .smt2)
+  echo "== $name =="
+  z3 -T:10 "$f" | tee "out/smt_results/${name}.txt"
+done
+== impossible_r12_m32_o32_c00 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c01 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c02 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c03 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c04 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c05 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c06 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c07 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c08 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c09 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c10 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c11 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c12 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c13 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c14 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r12_m32_o32_c15 ==
+unsat
+(error "line 140 column 10: model is not available")
+== impossible_r4_m32_o32_c00 ==
+unsat
+== impossible_r4_m32_o32_c01 ==
+unsat
+== impossible_r4_m32_o32_c02 ==
+unsat
+== impossible_r4_m32_o32_c03 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c04 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c05 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c06 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c07 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c08 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c09 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c10 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c11 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c12 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c13 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c14 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r4_m32_o32_c15 ==
+unsat
+(error "line 60 column 10: model is not available")
+== impossible_r6_m32_o32_c00 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c01 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c02 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c03 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c04 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c05 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c06 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c07 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c08 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c09 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c10 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c11 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c12 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c13 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c14 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r6_m32_o32_c15 ==
+unsat
+(error "line 80 column 10: model is not available")
+== impossible_r8_m32_o32_c00 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c01 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c02 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c03 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c04 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c05 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c06 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c07 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c08 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c09 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c10 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c11 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c12 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c13 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c14 ==
+unsat
+(error "line 100 column 10: model is not available")
+== impossible_r8_m32_o32_c15 ==
+unsat
+(error "line 100 column 10: model is not available")
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack   --attacks groebner   --groebner-rounds 1   --groebner-message-bits 8   --groebner-output-bits 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Groebner/Sage polynomial export ==
+core: tiny mini ARX feedback core over GF(2), Sage export only
+message_bits=8 output_bits=8 timeout_hint=30s
+rounds | variables | equations | file
+-------+-----------+-----------+-----
+     1 |       184 |       184 | out/groebner/case_r1_m8_o8.sage
+solver suggestion: sage out/groebner/case_r<round>_m<msgbits>_o<outbits>.sage(결과 못구함.)

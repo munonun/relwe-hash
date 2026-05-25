@@ -1,0 +1,99 @@
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks cycle \
+  --cycle-max-rounds 512 \
+  --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Full-state fingerprint cycle detection ==
+No cycle in 513 fingerprints for msg=
+No cycle in 513 fingerprints for msg=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+No cycle in 513 fingerprints for msg=00
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+No cycle in 513 fingerprints for msg=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+No cycle in 513 fingerprints for msg=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
+No cycle in 513 fingerprints for msg=5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555
+No cycle in 513 fingerprints for msg=00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff
+No cycle in 513 fingerprints for msg=61
+No cycle in 513 fingerprints for msg=74657374
+No cycle in 513 fingerprints for msg=6162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162
+No repeated full-state fingerprints detected.
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks rotational \
+  --rotational-rounds 48 \
+  --rotational-trials 1000 \
+  --rotational-shifts 1,8,16,32,64,128 \
+  --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Rotational symmetry test ==
+shift | trials | mean relation dist | min | max | mean direct dist | warning
+------+--------+--------------------+-----+-----+------------------+--------
+    1 |   1000 |             127.78 |  96 | 155 |           128.28 | 
+    8 |   1000 |             127.95 | 100 | 151 |           127.88 | 
+   16 |   1000 |             128.04 | 105 | 154 |           127.87 | 
+   32 |   1000 |             128.18 | 104 | 153 |           127.70 | 
+   64 |   1000 |             128.32 |  99 | 155 |           128.64 | 
+  128 |   1000 |             128.28 |  98 | 151 |           127.69 | 
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks low-entropy \
+  --low-entropy-rounds 48 \
+  --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Low-entropy input structure test ==
+case | len | ones ratio | longest run | byte chi2 | digest prefix | warning
+-----+-----+------------+-------------+-----------+---------------+--------
+empty |   0 | 0.5195 |           8 |    240.00 | f83d6caa4293251d | 
+zero1 |   1 | 0.5195 |          10 |    304.00 | b90b18801e07ad6a | 
+zero32 |  32 | 0.5078 |           7 |    224.00 | 46b2605f5b6f1d2f | 
+inc64 |  64 | 0.4531 |          12 |    272.00 | 097626b062ac183c | 
+ff128 | 128 | 0.4688 |           9 |    272.00 | d9991ef0d91a8c4a | 
+zero128 | 128 | 0.5469 |           8 |    288.00 | b79cd4f55339c79e | 
+aa128 | 128 | 0.4531 |           7 |    240.00 | 3ec496845842e494 | 
+55128 | 128 | 0.5156 |           8 |    272.00 | 9119c477bb3bba50 | 
+repeat-ab | 128 | 0.5000 |           9 |    272.00 | 0154c4b0d4055c4e | 
+pattern01 | 128 | 0.5312 |           9 |    272.00 | 0fbcac6f002fb5aa | 
+short-test |   4 | 0.5117 |           7 |    272.00 | d76019d43721d434 | 
+short-a |   1 | 0.5039 |           6 |    256.00 | 6acad07235db9c89 | 
+
+---
+
+skldghk@DESKTOP-917V6NN:~/Cryptography$ GOCACHE=/tmp/go-build-cache go run ./cmd/relweattack \
+  --attacks targeted-conditional \
+  --targeted-rounds 48 \
+  --targeted-searches 128 \
+  --targeted-trials 256 \
+  --threads 8
+Pure Re-LWE Hash Go attack experiments
+k=3, output_bits=256, prefix_bits=36
+Note: prefix collisions are truncated-digest experiments, not full hash breaks.
+
+== Targeted conditional avalanche search ==
+rounds=48 searches=128 trials=256 message_bits=256 output_bits=256
+input bit | output bit | flip prob | z-score | warning
+----------+------------+-----------+---------+--------
+       21 |         60 | 0.4102 |    2.88 | 
+      146 |         68 | 0.5859 |    2.75 | 
+       91 |        183 | 0.4258 |    2.38 | 
+       26 |         42 | 0.5703 |    2.25 | 
+       60 |        111 | 0.4336 |    2.12 | 
+      156 |        114 | 0.5664 |    2.12 | 
+      139 |         43 | 0.4375 |    2.00 | 
+      119 |         40 | 0.5625 |    2.00 | 
+      134 |        123 | 0.5547 |    1.75 | 
+      203 |        191 | 0.4453 |    1.75 | 
+       18 |         24 | 0.4453 |    1.75 | 
+      237 |         59 | 0.4453 |    1.75 | 

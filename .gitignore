@@ -1,0 +1,34 @@
+# C build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+relwehash_c
+benchmark_c
+
+# Go build/test artifacts
+go/benchmark/benchmark
+*.test
+coverage.out
+
+# Python/cache artifacts from analysis scripts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated experiment outputs
+out/
+
+# Local/editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Temporary logs
+*.tmp
+*.log

@@ -31,7 +31,7 @@ q:           3329
 k:           3
 eta:         2
 output:      256 bits by default
-xof:         arbitrary length, counter-squeezed from the Re-LWE core
+xof:         up to 274877906944 bytes, counter-squeezed from the Re-LWE core
 ```
 
 Tree Hybrid has been removed. There is no split/local/merge phase in v1.3.
@@ -44,6 +44,12 @@ XOF:        RELWE-XOF-v1
 ```
 
 The XOF does not call SHAKE or any external sponge. It absorbs the XOF domain, runs the same recursive Re-LWE core, then continues squeezing with the same ARX + modified Ring-LWE-derived state and an internal counter stream.
+
+Implementation limits:
+
+- `k=3` is the only Go/C interoperable rank accepted by the v1.3 public compatible APIs.
+- C config hash APIs require an explicit output buffer length and reject undersized fixed-hash buffers.
+- XOF output length is capped before the 32-bit stream counter can wrap.
 
 ## Security Goals
 

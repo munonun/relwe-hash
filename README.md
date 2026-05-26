@@ -46,7 +46,7 @@ q:           3329
 k:           3
 eta:         2
 output:      256 bits
-xof:         arbitrary length, RELWE-XOF-v1 domain
+xof:         up to 274877906944 bytes, RELWE-XOF-v1 domain
 ```
 
 Domain separation:
@@ -126,10 +126,23 @@ Use from C:
 ```c
 uint8_t digest[32];
 uint8_t stream[1024];
+relwe_config cfg;
 
 relwe_hash(digest, msg, msg_len);
-relwe_xof(stream, sizeof(stream), msg, msg_len);
+if (relwe_xof(stream, sizeof(stream), msg, msg_len) != RELWE_OK) {
+    return 1;
+}
+
+relwe_default_config(&cfg);
+if (relwe_hash_config(digest, sizeof(digest), msg, msg_len, cfg) != RELWE_OK) {
+    return 1;
+}
+if (relwe_xof_config(stream, sizeof(stream), msg, msg_len, cfg) != RELWE_OK) {
+    return 1;
+}
 ```
+
+The compatible v1.3 API rejects unsupported `k` values; `k=3` is the only Go/C interoperable rank in this release.
 
 ## Self-Test Vectors
 

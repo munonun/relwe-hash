@@ -26,7 +26,24 @@ func main() {
 		os.Exit(2)
 	}
 	if *eta > 8 {
-		fmt.Fprintf(os.Stderr, "warning: eta=%d is unusually large for this toy construction\n", *eta)
+		fmt.Fprintln(os.Stderr, "error: eta must be in range 1..8")
+		os.Exit(2)
+	}
+	if *rounds <= 0 {
+		fmt.Fprintln(os.Stderr, "error: rounds must be positive")
+		os.Exit(2)
+	}
+	if *outputBits != 256 && *outputBits != 512 {
+		fmt.Fprintln(os.Stderr, "error: output-bits must be 256 or 512")
+		os.Exit(2)
+	}
+	if *k != relwe.DefaultK {
+		fmt.Fprintf(os.Stderr, "error: only k=%d is supported for Go/C compatible v1.3 APIs\n", relwe.DefaultK)
+		os.Exit(2)
+	}
+	if *xofLen > relwe.XOFMaxOutput {
+		fmt.Fprintf(os.Stderr, "error: xof-len exceeds max %d bytes\n", relwe.XOFMaxOutput)
+		os.Exit(2)
 	}
 	h := relwe.NewFromConfig(relwe.Config{
 		K:          *k,

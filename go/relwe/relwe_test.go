@@ -103,6 +103,18 @@ func TestXOFDomainSeparationAndPrefix(t *testing.T) {
 	if len(XOF(message, 0)) != 0 {
 		t.Fatal("XOF length 0 should return an empty slice")
 	}
+	if XOF(message, XOFMaxOutput+1) != nil {
+		t.Fatal("XOF beyond maximum should be rejected")
+	}
+}
+
+func TestUnsupportedKPanics(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("unsupported k should panic")
+		}
+	}()
+	_ = NewWithParams(DefaultK+1, DefaultRounds, DefaultOutput)
 }
 
 func TestStateTraceMetrics(t *testing.T) {

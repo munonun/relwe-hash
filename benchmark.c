@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <limits.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -19,7 +21,12 @@ static double now_sec(void) {
 
 static int parse_int(int argc, char **argv, int *i, int *out) {
     if (*i + 1 >= argc) return -1;
-    *out = atoi(argv[++(*i)]);
+    const char *s = argv[++(*i)];
+    char *end = NULL;
+    errno = 0;
+    long v = strtol(s, &end, 10);
+    if (errno || end == s || *end || v < 1 || v > INT_MAX) return -1;
+    *out = (int)v;
     return 0;
 }
 
@@ -41,7 +48,12 @@ static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int i
         /* Warm the OpenMP worker team outside the timed region. */
     }
 #endif
-    for (int i = 0; i < 2; i++) relwe_hash_config(&cfg, data, len, out);
+    for (int i = 0; i < 2; i++) {
+        if (relwe_hash_config(out, sizeof(out), data, len, cfg)) {
+            fprintf(stderr, "invalid benchmark hash parameters\n");
+            exit(2);
+        }
+    }
     double start = now_sec();
     uint64_t checksum = 0;
 #ifdef _OPENMP
@@ -49,7 +61,7 @@ static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int i
 #endif
     for (int i = 0; i < iterations; i++) {
         uint8_t local_out[64];
-        relwe_hash_config(&cfg, data, len, local_out);
+        if (relwe_hash_config(local_out, sizeof(local_out), data, len, cfg)) continue;
         checksum ^= ((uint64_t)local_out[0] << 56) ^ ((uint64_t)local_out[7] << 48) ^ ((uint64_t)local_out[15] << 40) ^ (uint64_t)(uint32_t)i;
     }
     bench_guard ^= checksum ^ out[0];

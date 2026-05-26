@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <immintrin.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +61,7 @@ void relwe_default_config(relwe_config *cfg) {
 
 static relwe_config norm_cfg(const relwe_config *in) {
     relwe_config c; relwe_default_config(&c); if (in) c = *in;
-    if (c.k <= 0 || c.k > KMAX) c.k = RELWE_DEFAULT_K;
+    if (c.k != RELWE_DEFAULT_K) c.k = RELWE_DEFAULT_K;
     if (c.rounds <= 0) c.rounds = RELWE_DEFAULT_ROUNDS;
     if (c.output_bits != 256 && c.output_bits != 512) c.output_bits = RELWE_DEFAULT_OUTPUT_BITS;
     if (c.eta <= 0) c.eta = RELWE_DEFAULT_ETA;
@@ -69,6 +70,15 @@ static relwe_config norm_cfg(const relwe_config *in) {
 }
 
 size_t relwe_digest_size(const relwe_config *cfg) { relwe_config c = norm_cfg(cfg); return (size_t)c.output_bits / 8; }
+
+static int validate_config(relwe_config c) {
+    if (c.k != RELWE_DEFAULT_K) return RELWE_ERR_INVALID_PARAM;
+    if (c.rounds <= 0) return RELWE_ERR_INVALID_PARAM;
+    if (c.output_bits != 256 && c.output_bits != 512) return RELWE_ERR_INVALID_PARAM;
+    if (c.eta <= 0) return RELWE_ERR_INVALID_PARAM;
+    if (c.threads <= 0) return RELWE_ERR_INVALID_PARAM;
+    return RELWE_OK;
+}
 
 static int mod_pow(int base, int exp, int mod) {
     long long r = 1, b = base % mod;
@@ -88,7 +98,6 @@ static int primitive_root_mod(int mod) {
     return 0;
 }
 static void init_tables(void) {
-    if (tables_ready) return;
 #ifdef _OPENMP
 #pragma omp critical(relwe_tables_init)
 #endif
@@ -427,7 +436,7 @@ static void squeeze_xof(const relwe_config *cfg, const core_state *cs, const cha
         stream_words(&st, digest, 16);
         for (int i = 0; i < 16 && done < out_len; i++, word_index++) {
             uint32_t w = digest[i] ^ folded[word_index & 15];
-            w = rotl32(w, 7 + (int)word_index) ^ folded[(word_index * 5 + 3) & 15];
+            w = rotl32(w, (int)((7u + (uint32_t)word_index) & 31u)) ^ folded[(word_index * 5 + 3) & 15];
             for (int b = 0; b < 4 && done < out_len; b++, done++) out[done] = (uint8_t)(w >> (8 * b));
         }
     }
@@ -437,14 +446,50 @@ static void hash_domain_xof(const relwe_config *cfg, const char *domain, const u
 static void hash_pure(const relwe_config *cfg, const uint8_t *msg, size_t len, uint8_t *out) { hash_domain_xof(cfg, RELWE_HASH_DOMAIN, msg, len, out, relwe_digest_size(cfg)); }
 
 void relwe_hash(uint8_t out[32], const uint8_t *msg, size_t len) { relwe_config cfg; relwe_default_config(&cfg); hash_domain_xof(&cfg, RELWE_HASH_DOMAIN, msg, len, out, 32); }
-void relwe_xof(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len) { relwe_config cfg; relwe_default_config(&cfg); hash_domain_xof(&cfg, RELWE_XOF_DOMAIN, msg, len, out, out_len); }
-void relwe_hash_config(const relwe_config *config, const uint8_t *msg, size_t len, uint8_t *out) { relwe_config cfg = norm_cfg(config); hash_pure(&cfg, msg, len, out); }
-void relwe_xof_config(const relwe_config *config, uint8_t *out, size_t out_len, const uint8_t *msg, size_t len) { relwe_config cfg = norm_cfg(config); hash_domain_xof(&cfg, RELWE_XOF_DOMAIN, msg, len, out, out_len); }
-void relwe_hash_hex(const relwe_config *cfg, const uint8_t *msg, size_t len, char *hex_out) { static const char hd[] = "0123456789abcdef"; uint8_t d[64]; size_t n = relwe_digest_size(cfg); relwe_hash_config(cfg, msg, len, d); for (size_t i = 0; i < n; i++) { hex_out[2*i] = hd[d[i] >> 4]; hex_out[2*i+1] = hd[d[i] & 15]; } hex_out[2*n] = 0; }
-int relwe_hash_file_hex(const relwe_config *cfg, const char *path, char *hex_out) { FILE *f = fopen(path, "rb"); if (!f) return -1; if (fseek(f,0,SEEK_END)) { fclose(f); return -1; } long sz = ftell(f); if (sz < 0) { fclose(f); return -1; } rewind(f); uint8_t *buf = (uint8_t *)malloc((size_t)sz ? (size_t)sz : 1); if (!buf) { fclose(f); return -1; } size_t got = fread(buf,1,(size_t)sz,f); fclose(f); if (got != (size_t)sz) { free(buf); return -1; } relwe_hash_hex(cfg, buf, (size_t)sz, hex_out); free(buf); return 0; }
+int relwe_xof(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len) { relwe_config cfg; relwe_default_config(&cfg); return relwe_xof_config(out, out_len, msg, len, cfg); }
+int relwe_hash_config(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len, relwe_config cfg) {
+    if (validate_config(cfg)) return RELWE_ERR_INVALID_PARAM;
+    if (!out || (!msg && len)) return RELWE_ERR_INVALID_PARAM;
+    size_t need = (size_t)cfg.output_bits / 8u;
+    if (out_len < need) return RELWE_ERR_OUTPUT_TOO_SMALL;
+    hash_pure(&cfg, msg, len, out);
+    return RELWE_OK;
+}
+int relwe_xof_config(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len, relwe_config cfg) {
+    if (validate_config(cfg)) return RELWE_ERR_INVALID_PARAM;
+    if ((!out && out_len) || (!msg && len)) return RELWE_ERR_INVALID_PARAM;
+    if (out_len > RELWE_XOF_MAX_OUTPUT) return RELWE_ERR_OUTPUT_TOO_LARGE;
+    if (out_len) hash_domain_xof(&cfg, RELWE_XOF_DOMAIN, msg, len, out, out_len);
+    return RELWE_OK;
+}
+void relwe_hash_hex(const relwe_config *cfg_in, const uint8_t *msg, size_t len, char *hex_out) {
+    static const char hd[] = "0123456789abcdef"; uint8_t d[64]; relwe_config cfg; relwe_default_config(&cfg); if (cfg_in) cfg = *cfg_in; size_t n = relwe_digest_size(&cfg);
+    if (!hex_out || relwe_hash_config(d, sizeof(d), msg, len, cfg)) { if (hex_out) hex_out[0] = 0; return; }
+    for (size_t i = 0; i < n; i++) { hex_out[2*i] = hd[d[i] >> 4]; hex_out[2*i+1] = hd[d[i] & 15]; } hex_out[2*n] = 0;
+}
+int relwe_hash_file_hex(const relwe_config *cfg, const char *path, char *hex_out) { FILE *f = fopen(path, "rb"); if (!f) return -1; if (fseek(f,0,SEEK_END)) { fclose(f); return -1; } long sz = ftell(f); if (sz < 0) { fclose(f); return -1; } rewind(f); uint8_t *buf = (uint8_t *)malloc((size_t)sz ? (size_t)sz : 1); if (!buf) { fclose(f); return -1; } size_t got = fread(buf,1,(size_t)sz,f); fclose(f); if (got != (size_t)sz) { free(buf); return -1; } relwe_hash_hex(cfg, buf, (size_t)sz, hex_out); free(buf); return hex_out && hex_out[0] ? 0 : -1; }
 
 #ifdef RELWE_CLI
-static int next_int(int argc, char **argv, int *i, int *out) { if (*i + 1 >= argc) return -1; *out = atoi(argv[++(*i)]); return 0; }
+static int next_long(int argc, char **argv, int *i, long min, long max, long *out) {
+    if (*i + 1 >= argc) return -1;
+    const char *s = argv[++(*i)];
+    char *end = NULL;
+    errno = 0;
+    long v = strtol(s, &end, 10);
+    if (errno || end == s || *end || v < min || v > max) return -1;
+    *out = v;
+    return 0;
+}
+static int next_size(int argc, char **argv, int *i, size_t max, size_t *out) {
+    if (*i + 1 >= argc) return -1;
+    const char *s = argv[++(*i)];
+    char *end = NULL;
+    errno = 0;
+    unsigned long long v = strtoull(s, &end, 10);
+    if (errno || end == s || *end || v > (unsigned long long)max) return -1;
+    *out = (size_t)v;
+    return 0;
+}
 static void hex_encode(const uint8_t *in, size_t n, char *out) { static const char hd[] = "0123456789abcdef"; for (size_t i = 0; i < n; i++) { out[2*i] = hd[in[i] >> 4]; out[2*i+1] = hd[in[i] & 15]; } out[2*n] = 0; }
 static int read_file_all(const char *path, uint8_t **out, size_t *out_len) {
     FILE *f = fopen(path, "rb"); if (!f) return -1;
@@ -455,24 +500,28 @@ static int read_file_all(const char *path, uint8_t **out, size_t *out_len) {
     *out = buf; *out_len = (size_t)sz; return 0;
 }
 int main(int argc, char **argv) {
-    relwe_config cfg; relwe_default_config(&cfg); const char *file = NULL, *msg = NULL; int xof_len = -1;
+    relwe_config cfg; relwe_default_config(&cfg); const char *file = NULL, *msg = NULL; size_t xof_len = 0; int xof_set = 0;
     for (int i = 1; i < argc; i++) {
+        long v = 0;
         if (!strcmp(argv[i], "--file") || !strcmp(argv[i], "-f")) { if (++i >= argc) return 2; file = argv[i]; }
-        else if (!strcmp(argv[i], "--threads")) { if (next_int(argc, argv, &i, &cfg.threads)) return 2; }
-        else if (!strcmp(argv[i], "--rounds")) { if (next_int(argc, argv, &i, &cfg.rounds)) return 2; }
-        else if (!strcmp(argv[i], "--eta")) { if (next_int(argc, argv, &i, &cfg.eta)) return 2; }
-        else if (!strcmp(argv[i], "--output-bits")) { if (next_int(argc, argv, &i, &cfg.output_bits)) return 2; }
-        else if (!strcmp(argv[i], "--xof-len")) { if (next_int(argc, argv, &i, &xof_len)) return 2; }
+        else if (!strcmp(argv[i], "--threads")) { if (next_long(argc, argv, &i, 1, INT_MAX, &v)) return 2; cfg.threads = (int)v; }
+        else if (!strcmp(argv[i], "--rounds")) { if (next_long(argc, argv, &i, 1, INT_MAX, &v)) return 2; cfg.rounds = (int)v; }
+        else if (!strcmp(argv[i], "--eta")) { if (next_long(argc, argv, &i, 1, 8, &v)) return 2; cfg.eta = (int)v; }
+        else if (!strcmp(argv[i], "--k")) { if (next_long(argc, argv, &i, RELWE_DEFAULT_K, RELWE_DEFAULT_K, &v)) return 2; cfg.k = (int)v; }
+        else if (!strcmp(argv[i], "--output-bits")) { if (next_long(argc, argv, &i, 256, 512, &v) || (v != 256 && v != 512)) return 2; cfg.output_bits = (int)v; }
+        else if (!strcmp(argv[i], "--xof-len")) { if (next_size(argc, argv, &i, RELWE_XOF_MAX_OUTPUT, &xof_len)) return 2; xof_set = 1; }
         else if (!strcmp(argv[i], "--pure")) { /* Deprecated no-op: pure mode is always used. */ }
         else msg = argv[i];
     }
-    if (xof_len >= 0) {
-        uint8_t *out = (uint8_t *)malloc((size_t)xof_len ? (size_t)xof_len : 1), *data = NULL; size_t len = 0;
-        char *hex = (char *)malloc((size_t)xof_len * 2u + 1u);
+    if (xof_set) {
+        if (xof_len > (SIZE_MAX - 1u) / 2u) return 2;
+        uint8_t *out = (uint8_t *)malloc(xof_len ? xof_len : 1), *data = NULL; size_t len = 0;
+        char *hex = (char *)malloc(xof_len * 2u + 1u);
         if (!out || !hex) return 1;
         if (file) { if (read_file_all(file, &data, &len)) { fprintf(stderr, "error: %s\n", strerror(errno)); return 1; } }
         else { if (!msg) msg = "The stone was rolled away."; data = (uint8_t *)(uintptr_t)msg; len = strlen(msg); }
-        relwe_xof_config(&cfg, out, (size_t)xof_len, data, len); hex_encode(out, (size_t)xof_len, hex); puts(hex);
+        if (relwe_xof_config(out, xof_len, data, len, cfg)) { fprintf(stderr, "error: invalid XOF parameters\n"); return 2; }
+        hex_encode(out, xof_len, hex); puts(hex);
         if (file) free(data);
         free(out); free(hex); return 0;
     }

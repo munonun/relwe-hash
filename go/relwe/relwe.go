@@ -22,6 +22,7 @@ const (
 	DefaultRounds = 32
 	DefaultOutput = 256
 	DefaultEta    = 2
+	XOFMaxOutput  = 1 << 38
 	Warning       = "This is a toy hash for educational purposes only. Do not use for real security."
 	mask32        = uint32(0xFFFFFFFF)
 	hashDomain    = "RELWE-HASH-v1"
@@ -119,6 +120,9 @@ func normalizeConfig(config Config) Config {
 	k := config.K
 	if k <= 0 {
 		k = DefaultK
+	}
+	if k != DefaultK {
+		panic("relwe: only k=3 is supported for Go/C compatible v1.3 APIs")
 	}
 	rounds := config.Rounds
 	if rounds <= 0 {
@@ -240,6 +244,9 @@ func (h *ReLWEHash) sumBytes(message []byte, outLen int, domain string) []byte {
 func (h *ReLWEHash) XOF(message []byte, outLen int) []byte {
 	if outLen <= 0 {
 		return []byte{}
+	}
+	if outLen > XOFMaxOutput {
+		return nil
 	}
 	return h.sumBytes(message, outLen, xofDomain)
 }

@@ -12,6 +12,8 @@
 
 #define KMAX RELWE_DEFAULT_K
 #define MID 128
+#define RELWE_HASH_DOMAIN "RELWE-HASH-v1"
+#define RELWE_XOF_DOMAIN "RELWE-XOF-v1"
 #if defined(__GNUC__) || defined(__clang__)
 #define RELWE_ALIGN64 __attribute__((aligned(64)))
 #define RELWE_ALWAYS_INLINE inline __attribute__((always_inline))
@@ -33,9 +35,10 @@ typedef struct RELWE_ALIGN64 { uint32_t state[16], counter; } arx_stream;
 typedef struct RELWE_ALIGN64 { uint32_t iv[16], seed[16]; poly state[KMAX], err[KMAX]; } core_state;
 
 static int bit_reverse[RELWE_N], bitrev_i[RELWE_N / 2], bitrev_j[RELWE_N / 2], bitrev_count;
+static int stage_twiddles[2][8][RELWE_N / 2];
 static int stage_roots[8], stage_inv_roots[8], inv_n, tables_ready;
 
-static RELWE_ALWAYS_INLINE uint32_t rotl32(uint32_t x, int n) { return (x << n) | (x >> (32 - n)); }
+static RELWE_ALWAYS_INLINE uint32_t rotl32(uint32_t x, int n) { n &= 31; return n ? ((x << n) | (x >> (32 - n))) : x; }
 static RELWE_ALWAYS_INLINE uint32_t load32(const uint8_t *p, size_t n) { uint32_t v = 0; for (size_t i = 0; i < n; i++) v |= (uint32_t)p[i] << (8 * i); return v; }
 static RELWE_ALWAYS_INLINE int mod_q(int x) { x %= RELWE_Q; if (x < 0) x += RELWE_Q; return x; }
 static RELWE_ALWAYS_INLINE int add_mod(int a, int b) { int v = a + b; if (v >= RELWE_Q) v -= RELWE_Q; return v; }
@@ -106,6 +109,17 @@ static void init_tables(void) {
         int r = mod_pow(root, (RELWE_Q - 1) / length, RELWE_Q);
         stage_roots[stage] = r; stage_inv_roots[stage] = mod_inv(r, RELWE_Q); stage++;
     }
+    for (int inv = 0; inv < 2; inv++) {
+        for (stage = 0; stage < 8; stage++) {
+            int length = 2 << stage, half = length >> 1;
+            int wlen = inv ? stage_inv_roots[stage] : stage_roots[stage];
+            int w = 1;
+            for (int i = 0; i < half; i++) {
+                stage_twiddles[inv][stage][i] = w;
+                w = mul_mod(w, wlen);
+            }
+        }
+    }
     inv_n = mod_inv(RELWE_N, RELWE_Q);
     tables_ready = 1;
     }
@@ -120,14 +134,14 @@ static void ntt_in_place(int v[RELWE_N], int invert) {
     }
     int stage = 0;
     for (int length = 2; length <= RELWE_N; length <<= 1) {
-        int wlen = invert ? stage_inv_roots[stage] : stage_roots[stage], half = length >> 1;
+        int half = length >> 1;
+        const int *tw = stage_twiddles[invert ? 1 : 0][stage];
         for (int start = 0; start < RELWE_N; start += length) {
-            int w = 1;
-            for (int off = start; off < start + half; off++) {
-                int u = v[off], x = mul_mod(v[off + half], w);
+            for (int j = 0, off = start; j < half; j++, off++) {
+                int u = v[off], x = mul_mod(v[off + half], tw[j]);
                 int sum = u + x; if (sum >= RELWE_Q) sum -= RELWE_Q;
                 int diff = u - x; if (diff < 0) diff += RELWE_Q;
-                v[off] = sum; v[off + half] = diff; w = mul_mod(w, wlen);
+                v[off] = sum; v[off + half] = diff;
             }
         }
         stage++;
@@ -213,6 +227,7 @@ static void sponge_absorb_block(sponge *s, const uint8_t *block, size_t len, int
     if (full) s->state[0] ^= (uint32_t)len; else s->state[0] ^= 0x80000000u | (uint32_t)len;
     s->state[9] += (uint32_t)s->total_len; s->state[13] ^= (uint32_t)(s->total_len >> 32); arx_permute_in(s->state, 8);
 }
+
 static void sponge_update(sponge *s, const uint8_t *data, size_t len) {
     if (!len) return;
     s->total_len += len;
@@ -233,8 +248,12 @@ static void sponge_finalize(sponge *s, uint32_t out[16]) {
     uint8_t pad[65]; memcpy(pad, s->buf, s->buf_len); pad[s->buf_len] = 0x80; sponge_absorb_block(s, pad, s->buf_len + 1, 0);
     s->state[1] ^= (uint32_t)s->total_len; s->state[2] ^= (uint32_t)(s->total_len >> 32); s->state[14] ^= 0xFFFFFFFFu; arx_permute_in(s->state, 16); memcpy(out, s->state, 64);
 }
-static void absorb_bytes(const relwe_config *cfg, const uint8_t *msg, size_t len, uint32_t iv[16]) { sponge s; sponge_init(&s, cfg->k, cfg->rounds, cfg->output_bits, cfg->eta); sponge_update(&s, msg, len); sponge_finalize(&s, iv); }
-
+static void absorb_bytes_domain(const relwe_config *cfg, const char *domain, const uint8_t *msg, size_t len, uint32_t iv[16]) {
+    sponge s; sponge_init(&s, cfg->k, cfg->rounds, cfg->output_bits, cfg->eta);
+    sponge_update(&s, (const uint8_t *)domain, strlen(domain));
+    sponge_update(&s, msg, len);
+    sponge_finalize(&s, iv);
+}
 static int noise_bound(const relwe_config *cfg) { return 16 * (cfg->eta > 0 ? cfg->eta : RELWE_DEFAULT_ETA); }
 static void poly_uniform(poly *p, const uint32_t seed[16], uint32_t domain) { uint32_t w[RELWE_N]; derive_words(seed, domain, w, RELWE_N); for (int i = 0; i < RELWE_N; i++) p->c[i] = (int)(w[i] % RELWE_Q); }
 static void poly_small(poly *p, const uint32_t *words, size_t nw, int bound) {
@@ -382,33 +401,80 @@ static void mix_round(const relwe_config *cfg, core_state *cs, int round) {
     evolve_seed(cfg, cs->seed, salt, next_state, next_err, cs->iv, round, next_seed); memcpy(cs->state, next_state, sizeof(next_state)); memcpy(cs->err, next_err, sizeof(next_err)); memcpy(cs->seed, next_seed, 64);
 }
 static void run_core(const relwe_config *cfg, const uint32_t iv[16], core_state *cs) { init_core(cfg, iv, cs); for (int r = 0; r < cfg->rounds; r++) mix_round(cfg, cs, r); }
-static void squeeze(const relwe_config *cfg, const core_state *cs, uint8_t *out) {
-    uint32_t words[16 + 16 + 5 + KMAX * RELWE_N + KMAX * (RELWE_N / 2)], folded[16], digest[16]; size_t n = 0; memcpy(words + n, cs->iv, 64); n += 16; memcpy(words + n, cs->seed, 64); n += 16;
+static size_t domain_words(const char *domain, uint32_t *out) {
+    size_t len = strlen(domain);
+    if (!len) { out[0] = 0; return 1; }
+    size_t n = (len + 3u) / 4u;
+    for (size_t i = 0; i < n; i++) {
+        uint32_t v = 0;
+        for (size_t j = 0; j < 4 && i * 4 + j < len; j++) v |= (uint32_t)(uint8_t)domain[i * 4 + j] << (8 * j);
+        out[i] = v;
+    }
+    return n;
+}
+static void squeeze_xof(const relwe_config *cfg, const core_state *cs, const char *domain, uint8_t *out, size_t out_len) {
+    if (!out_len) return;
+    uint32_t words[16 + 16 + 16 + 5 + KMAX * RELWE_N + KMAX * (RELWE_N / 2)], folded[16], digest[16]; size_t n = 0;
+    n += domain_words(domain, words + n);
+    memcpy(words + n, cs->iv, 64); n += 16; memcpy(words + n, cs->seed, 64); n += 16;
     words[n++] = RELWE_N; words[n++] = RELWE_Q; words[n++] = (uint32_t)cfg->k; words[n++] = (uint32_t)cfg->rounds; words[n++] = (uint32_t)cfg->output_bits;
     for (int p = 0; p < cfg->k; p++) { int stride = 73 + 2 * p; for (int t = 0; t < RELWE_N; t++) words[n++] = (uint32_t)cs->state[p].c[(t * stride + 17 * p) & 255] | ((uint32_t)cs->state[p].c[(t * 41 + 19 + p) & 255] << 16) | ((uint32_t)(p & 3) << 30); }
     for (int p = 0; p < cfg->k; p++) { int stride = 89 + 2 * p; for (int t = 0; t < RELWE_N; t += 2) words[n++] = (uint32_t)cs->err[p].c[(t * stride + 29 * p) & 255] | ((uint32_t)cs->err[p].c[(t * 53 + 31 + p) & 255] << 16) | ((uint32_t)(p & 3) << 29); }
-    mix_words(words, n, 0xF1A1F01Du ^ (uint32_t)cfg->output_bits, 16, folded); arx_stream st; stream_init(&st, folded, 0xD16E5700u ^ (uint32_t)cfg->output_bits); stream_words(&st, digest, (size_t)cfg->output_bits / 32);
-    for (int i = 0; i < cfg->output_bits / 32; i++) { digest[i] ^= folded[i & 15]; digest[i] = rotl32(digest[i], 7 + i) ^ folded[(i * 5 + 3) & 15]; out[4*i] = (uint8_t)digest[i]; out[4*i+1] = (uint8_t)(digest[i] >> 8); out[4*i+2] = (uint8_t)(digest[i] >> 16); out[4*i+3] = (uint8_t)(digest[i] >> 24); }
+    size_t domain_len = strlen(domain);
+    mix_words(words, n, 0xF1A1F01Du ^ (uint32_t)domain_len, 16, folded); arx_stream st; stream_init(&st, folded, 0xD16E5700u ^ (uint32_t)domain_len);
+    size_t done = 0, word_index = 0;
+    while (done < out_len) {
+        stream_words(&st, digest, 16);
+        for (int i = 0; i < 16 && done < out_len; i++, word_index++) {
+            uint32_t w = digest[i] ^ folded[word_index & 15];
+            w = rotl32(w, 7 + (int)word_index) ^ folded[(word_index * 5 + 3) & 15];
+            for (int b = 0; b < 4 && done < out_len; b++, done++) out[done] = (uint8_t)(w >> (8 * b));
+        }
+    }
 }
 
-static void hash_pure(const relwe_config *cfg, const uint8_t *msg, size_t len, uint8_t *out) { uint32_t iv[16]; core_state cs; absorb_bytes(cfg, msg, len, iv); run_core(cfg, iv, &cs); squeeze(cfg, &cs, out); }
+static void hash_domain_xof(const relwe_config *cfg, const char *domain, const uint8_t *msg, size_t len, uint8_t *out, size_t out_len) { uint32_t iv[16]; core_state cs; absorb_bytes_domain(cfg, domain, msg, len, iv); run_core(cfg, iv, &cs); squeeze_xof(cfg, &cs, domain, out, out_len); }
+static void hash_pure(const relwe_config *cfg, const uint8_t *msg, size_t len, uint8_t *out) { hash_domain_xof(cfg, RELWE_HASH_DOMAIN, msg, len, out, relwe_digest_size(cfg)); }
 
-void relwe_hash(const relwe_config *config, const uint8_t *msg, size_t len, uint8_t *out) { relwe_config cfg = norm_cfg(config); hash_pure(&cfg, msg, len, out); }
-void relwe_hash_hex(const relwe_config *cfg, const uint8_t *msg, size_t len, char *hex_out) { static const char hd[] = "0123456789abcdef"; uint8_t d[64]; size_t n = relwe_digest_size(cfg); relwe_hash(cfg, msg, len, d); for (size_t i = 0; i < n; i++) { hex_out[2*i] = hd[d[i] >> 4]; hex_out[2*i+1] = hd[d[i] & 15]; } hex_out[2*n] = 0; }
+void relwe_hash(uint8_t out[32], const uint8_t *msg, size_t len) { relwe_config cfg; relwe_default_config(&cfg); hash_domain_xof(&cfg, RELWE_HASH_DOMAIN, msg, len, out, 32); }
+void relwe_xof(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len) { relwe_config cfg; relwe_default_config(&cfg); hash_domain_xof(&cfg, RELWE_XOF_DOMAIN, msg, len, out, out_len); }
+void relwe_hash_config(const relwe_config *config, const uint8_t *msg, size_t len, uint8_t *out) { relwe_config cfg = norm_cfg(config); hash_pure(&cfg, msg, len, out); }
+void relwe_xof_config(const relwe_config *config, uint8_t *out, size_t out_len, const uint8_t *msg, size_t len) { relwe_config cfg = norm_cfg(config); hash_domain_xof(&cfg, RELWE_XOF_DOMAIN, msg, len, out, out_len); }
+void relwe_hash_hex(const relwe_config *cfg, const uint8_t *msg, size_t len, char *hex_out) { static const char hd[] = "0123456789abcdef"; uint8_t d[64]; size_t n = relwe_digest_size(cfg); relwe_hash_config(cfg, msg, len, d); for (size_t i = 0; i < n; i++) { hex_out[2*i] = hd[d[i] >> 4]; hex_out[2*i+1] = hd[d[i] & 15]; } hex_out[2*n] = 0; }
 int relwe_hash_file_hex(const relwe_config *cfg, const char *path, char *hex_out) { FILE *f = fopen(path, "rb"); if (!f) return -1; if (fseek(f,0,SEEK_END)) { fclose(f); return -1; } long sz = ftell(f); if (sz < 0) { fclose(f); return -1; } rewind(f); uint8_t *buf = (uint8_t *)malloc((size_t)sz ? (size_t)sz : 1); if (!buf) { fclose(f); return -1; } size_t got = fread(buf,1,(size_t)sz,f); fclose(f); if (got != (size_t)sz) { free(buf); return -1; } relwe_hash_hex(cfg, buf, (size_t)sz, hex_out); free(buf); return 0; }
 
 #ifdef RELWE_CLI
 static int next_int(int argc, char **argv, int *i, int *out) { if (*i + 1 >= argc) return -1; *out = atoi(argv[++(*i)]); return 0; }
+static void hex_encode(const uint8_t *in, size_t n, char *out) { static const char hd[] = "0123456789abcdef"; for (size_t i = 0; i < n; i++) { out[2*i] = hd[in[i] >> 4]; out[2*i+1] = hd[in[i] & 15]; } out[2*n] = 0; }
+static int read_file_all(const char *path, uint8_t **out, size_t *out_len) {
+    FILE *f = fopen(path, "rb"); if (!f) return -1;
+    if (fseek(f,0,SEEK_END)) { fclose(f); return -1; }
+    long sz = ftell(f); if (sz < 0) { fclose(f); return -1; }
+    rewind(f); uint8_t *buf = (uint8_t *)malloc((size_t)sz ? (size_t)sz : 1); if (!buf) { fclose(f); return -1; }
+    size_t got = fread(buf,1,(size_t)sz,f); fclose(f); if (got != (size_t)sz) { free(buf); return -1; }
+    *out = buf; *out_len = (size_t)sz; return 0;
+}
 int main(int argc, char **argv) {
-    relwe_config cfg; relwe_default_config(&cfg); const char *file = NULL, *msg = NULL;
+    relwe_config cfg; relwe_default_config(&cfg); const char *file = NULL, *msg = NULL; int xof_len = -1;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--file") || !strcmp(argv[i], "-f")) { if (++i >= argc) return 2; file = argv[i]; }
         else if (!strcmp(argv[i], "--threads")) { if (next_int(argc, argv, &i, &cfg.threads)) return 2; }
         else if (!strcmp(argv[i], "--rounds")) { if (next_int(argc, argv, &i, &cfg.rounds)) return 2; }
         else if (!strcmp(argv[i], "--eta")) { if (next_int(argc, argv, &i, &cfg.eta)) return 2; }
         else if (!strcmp(argv[i], "--output-bits")) { if (next_int(argc, argv, &i, &cfg.output_bits)) return 2; }
+        else if (!strcmp(argv[i], "--xof-len")) { if (next_int(argc, argv, &i, &xof_len)) return 2; }
         else if (!strcmp(argv[i], "--pure")) { /* Deprecated no-op: pure mode is always used. */ }
         else msg = argv[i];
+    }
+    if (xof_len >= 0) {
+        uint8_t *out = (uint8_t *)malloc((size_t)xof_len ? (size_t)xof_len : 1), *data = NULL; size_t len = 0;
+        char *hex = (char *)malloc((size_t)xof_len * 2u + 1u);
+        if (!out || !hex) return 1;
+        if (file) { if (read_file_all(file, &data, &len)) { fprintf(stderr, "error: %s\n", strerror(errno)); return 1; } }
+        else { if (!msg) msg = "The stone was rolled away."; data = (uint8_t *)(uintptr_t)msg; len = strlen(msg); }
+        relwe_xof_config(&cfg, out, (size_t)xof_len, data, len); hex_encode(out, (size_t)xof_len, hex); puts(hex);
+        if (file) free(data);
+        free(out); free(hex); return 0;
     }
     char hex[129]; if (file) { if (relwe_hash_file_hex(&cfg, file, hex)) { fprintf(stderr, "error: %s\n", strerror(errno)); return 1; } } else { if (!msg) msg = "The stone was rolled away."; relwe_hash_hex(&cfg, (const uint8_t *)msg, strlen(msg), hex); } puts(hex); return 0;
 }

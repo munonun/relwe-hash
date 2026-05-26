@@ -1,8 +1,8 @@
-# Security Analysis: Re-LWE Hash v1.1
+# Security Analysis: Re-LWE Hash v1.3
 
 ## Summary
 
-Re-LWE Hash v1.1 is an experimental pure recursive lattice + ARX hash. The default configuration is 32 rounds. The 48-round path remains available through `--rounds 48` for conservative experiments.
+Re-LWE Hash v1.3 is an experimental pure recursive lattice + ARX hash with fixed-digest and XOF APIs. The default configuration is 32 rounds. The 48-round path remains available through `--rounds 48` for conservative experiments.
 
 The design goal is not to wrap an existing hash. It is to preserve a strong self-referential Re-LWE feedback loop:
 
@@ -19,7 +19,7 @@ The construction has promising empirical behavior, but it has no formal proof, n
 
 The design philosophy remains: no Tree Hybrid, no SHA3/SHAKE dependency, no borrowed external round constants, and no weakening of the recursive `e <-> b` chaos for speed.
 
-## v1.1 Baseline
+## v1.3 Baseline
 
 ```text
 mode:        Pure recursive only
@@ -31,9 +31,19 @@ q:           3329
 k:           3
 eta:         2
 output:      256 bits by default
+xof:         arbitrary length, counter-squeezed from the Re-LWE core
 ```
 
-Tree Hybrid has been removed. There is no split/local/merge phase in v1.1.
+Tree Hybrid has been removed. There is no split/local/merge phase in v1.3.
+
+Domain separation is explicit:
+
+```text
+Fixed hash: RELWE-HASH-v1
+XOF:        RELWE-XOF-v1
+```
+
+The XOF does not call SHAKE or any external sponge. It absorbs the XOF domain, runs the same recursive Re-LWE core, then continues squeezing with the same ARX + modified Ring-LWE-derived state and an internal counter stream.
 
 ## Security Goals
 
@@ -86,7 +96,7 @@ mean absolute bias from 0.5: 0.0005
 max absolute bias from 0.5: 0.0019
 ```
 
-This is the main reason 32 rounds remains the v1.1 default.
+This is the main reason 32 rounds remains the v1.3 default.
 
 ## 32 Rounds vs 48 Rounds
 
@@ -158,16 +168,17 @@ Open risks remain:
 - Algebraic, SAT/SMT, MILP, and Gröbner-style attacks are not exhausted.
 - Random avalanche and differential tests can miss structural weaknesses.
 - No public third-party cryptanalysis.
+- XOF-specific misuse resistance has not been independently analyzed; fixed hash and XOF are domain-separated, but callers should still avoid protocol ambiguity.
 
 The primitive is intentionally chaotic and self-referential, but chaos is not a proof.
 
 ## Performance Context
 
-The v1.1 default is 32 rounds because it gives a strong empirical security/performance balance:
+The v1.3 default is 32 rounds because it gives a strong empirical security/performance balance:
 
 ```text
 Go Pure 32r historical benchmark: 117.07 MB/s
-C AVX2 Pure 32r local benchmark: 5504.15 MB/s
+C AVX2 Pure 32r local best observed benchmark: 5856.15 MB/s
 ```
 
 The optimized C path reaches BLAKE3-class multi-threaded bulk throughput without restoring Tree Hybrid and without weakening the recursive core.
@@ -196,10 +207,13 @@ Expected digests:
 
 ```text
 32 rounds:
-9893280ff26e5cd7c640bcda8a4ccd6aea5ba14fac861d38d55fc620d8004ae3
+8afaa410180107a133eed056ef7254ae93a389a8b09f1539c5ee41a40de6e707
 
 48 rounds:
-31e86769b004819435a8ca42b29bdc646ea9e550266727ebbe42ac044e6186f6
+4b6d3a56521ef5db650011483668f1911166d318f87f62f8b56d8134acc98d9b
+
+XOF, 64 bytes:
+093627fe71a30d4f165463d431a02ac9dd318d5aa78b19e23273eb8958e57dea4c2c3d8854996ff2df2cb9708f89721eb779c1d613adf0a8a995fd9f1115a7a2
 ```
 
-Go and C must match byte-for-byte for these vectors.
+Go and C must match byte-for-byte for these vectors and for any XOF length.

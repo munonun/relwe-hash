@@ -1,6 +1,9 @@
 package relwe
 
-import "testing"
+import (
+	"encoding/hex"
+	"testing"
+)
 
 func TestNTTRoundTrip(t *testing.T) {
 	values := make([]int, N)
@@ -71,6 +74,34 @@ func TestRoundConfigurationChangesDigest(t *testing.T) {
 	}
 	if r32.HashBytes(message) == r48.HashBytes(message) {
 		t.Fatal("32-round and 48-round hashes unexpectedly matched")
+	}
+}
+
+func TestSum256MatchesDefaultHashBytes(t *testing.T) {
+	message := []byte("v1.3 fixed hash domain")
+	sum := Sum256(message)
+	got := hex.EncodeToString(sum[:])
+	want := NewWithParams(DefaultK, DefaultRounds, DefaultOutput).HashBytes(message)
+	if got != want {
+		t.Fatalf("Sum256 mismatch:\n got %s\nwant %s", got, want)
+	}
+}
+
+func TestXOFDomainSeparationAndPrefix(t *testing.T) {
+	message := []byte("v1.3 xof domain")
+	sum := Sum256(message)
+	xof32 := XOF(message, 32)
+	if hex.EncodeToString(sum[:]) == hex.EncodeToString(xof32) {
+		t.Fatal("XOF(32) unexpectedly matched fixed hash digest")
+	}
+
+	xof16 := XOF(message, 16)
+	xof64 := XOF(message, 64)
+	if string(xof16) != string(xof64[:16]) {
+		t.Fatal("XOF output is not prefix-stable")
+	}
+	if len(XOF(message, 0)) != 0 {
+		t.Fatal("XOF length 0 should return an empty slice")
 	}
 }
 

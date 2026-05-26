@@ -36,8 +36,12 @@ static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int i
 
 #ifdef _OPENMP
     omp_set_dynamic(0);
+#pragma omp parallel num_threads(cfg.threads)
+    {
+        /* Warm the OpenMP worker team outside the timed region. */
+    }
 #endif
-    for (int i = 0; i < 2; i++) relwe_hash(&cfg, data, len, out);
+    for (int i = 0; i < 2; i++) relwe_hash_config(&cfg, data, len, out);
     double start = now_sec();
     uint64_t checksum = 0;
 #ifdef _OPENMP
@@ -45,7 +49,7 @@ static void run_benchmark(relwe_config cfg, const char *name, int data_mb, int i
 #endif
     for (int i = 0; i < iterations; i++) {
         uint8_t local_out[64];
-        relwe_hash(&cfg, data, len, local_out);
+        relwe_hash_config(&cfg, data, len, local_out);
         checksum ^= ((uint64_t)local_out[0] << 56) ^ ((uint64_t)local_out[7] << 48) ^ ((uint64_t)local_out[15] << 40) ^ (uint64_t)(uint32_t)i;
     }
     bench_guard ^= checksum ^ out[0];

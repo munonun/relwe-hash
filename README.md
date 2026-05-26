@@ -1,8 +1,8 @@
-# Re-LWE Hash v1.1
+# Re-LWE Hash v1.3
 
-Pure recursive lattice + ARX hashing with strong self-referential chaos, no SHA3 dependency, and a fast AVX2 C port.
+Pure recursive lattice + ARX hashing with strong self-referential chaos, XOF support, no SHA3 dependency, and a fast AVX2 C port.
 
-Re-LWE Hash v1.1 is the extreme-performance pure line: Tree Hybrid is gone, Pure 32 rounds is the default, and 48 rounds remains available as an explicit high-security mode.
+Re-LWE Hash v1.3 is the XOF support release: Tree Hybrid is gone, Pure 32 rounds is the default, 48 rounds remains available as an explicit high-security mode, and fixed hash/XOF outputs are separated by domain tags.
 
 > Re-LWE Hash is experimental cryptographic research software. It is not standardized or third-party audited. Use SHA-2, SHA-3, BLAKE2, BLAKE3, or another vetted hash for production security.
 
@@ -15,6 +15,7 @@ Re-LWE Hash is built around one idea: keep the internal state dirty, recursive, 
 - **No reduction of recursive depth for benchmark theater.**
 - **Strong recursive self-reference:** the error vector `e`, lattice state `b`, evolved seed, ARX salt, and Ring-LWE mixing feed each other every round.
 - **Pure lattice + ARX hybrid:** modified Ring-LWE polynomial multiplication supplies algebraic weight; ARX supplies fast chaotic diffusion.
+- **Domain-separated XOF:** fixed hash and XOF use independent Re-LWE domains, not SHAKE or any external sponge.
 
 The construction intentionally keeps the feedback loop tangled:
 
@@ -27,11 +28,11 @@ message
        -> ARX error evolution
        -> Ring-LWE matrix mixing + state self-product
        -> seed evolution
-  -> ARX squeeze
-  -> digest
+  -> ARX squeeze / counter squeeze
+  -> digest or XOF bytes
 ```
 
-## v1.1 Structure
+## v1.3 Structure
 
 Default parameters:
 
@@ -45,6 +46,14 @@ q:           3329
 k:           3
 eta:         2
 output:      256 bits
+xof:         arbitrary length, RELWE-XOF-v1 domain
+```
+
+Domain separation:
+
+```text
+Fixed hash: RELWE-HASH-v1
+XOF:        RELWE-XOF-v1
 ```
 
 ## Build
@@ -74,6 +83,7 @@ Hash a string with Go:
 cd go
 go run ./cmd/relwehash "hello"
 go run ./cmd/relwehash --rounds 48 "hello"
+go run ./cmd/relwehash --xof-len 64 "hello"
 ```
 
 Hash a file with Go:
@@ -88,6 +98,7 @@ Hash a string with C:
 ```bash
 ./relwehash_c "hello"
 ./relwehash_c --rounds 48 "hello"
+./relwehash_c --xof-len 64 "hello"
 ```
 
 Hash a file with C:
@@ -101,6 +112,23 @@ Use from Go:
 ```go
 h := relwe.NewWithParams(relwe.DefaultK, relwe.DefaultRounds, relwe.DefaultOutput)
 digest := h.Hash("hello")
+xof := h.XOF([]byte("hello"), 64)
+sum := relwe.Sum256([]byte("hello"))
+stream := relwe.XOF([]byte("hello"), 1024)
+_ = digest
+_ = xof
+_ = sum
+_ = stream
+```
+
+Use from C:
+
+```c
+uint8_t digest[32];
+uint8_t stream[1024];
+
+relwe_hash(digest, msg, msg_len);
+relwe_xof(stream, sizeof(stream), msg, msg_len);
 ```
 
 ## Self-Test Vectors
@@ -115,13 +143,16 @@ Expected digests:
 
 ```text
 32 rounds:
-9893280ff26e5cd7c640bcda8a4ccd6aea5ba14fac861d38d55fc620d8004ae3
+8afaa410180107a133eed056ef7254ae93a389a8b09f1539c5ee41a40de6e707
 
 48 rounds:
-31e86769b004819435a8ca42b29bdc646ea9e550266727ebbe42ac044e6186f6
+4b6d3a56521ef5db650011483668f1911166d318f87f62f8b56d8134acc98d9b
+
+XOF, 64 bytes:
+093627fe71a30d4f165463d431a02ac9dd318d5aa78b19e23273eb8958e57dea4c2c3d8854996ff2df2cb9708f89721eb779c1d613adf0a8a995fd9f1115a7a2
 ```
 
-Go and C are expected to match byte-for-byte for the same parameters.
+Go and C are expected to match byte-for-byte for the same parameters and XOF length.
 
 ## Benchmark
 
@@ -136,10 +167,10 @@ Current optimized C AVX2 benchmark on the local 16-thread WSL machine:
 
 ```text
 ./benchmark_c --data-mb 64 --iterations 16 --threads 16 --rounds 32
-Throughput: 5504.15 MB/s
+Best observed throughput: 5856.15 MB/s
 ```
 
-That is the v1.1 target in one line:
+That is the v1.3 target in one line:
 
 ```text
 Tree 없이, Pure 32r로, BLAKE3급 bulk throughput.
@@ -181,7 +212,7 @@ go/benchmark               Go benchmark
 relwe.h / relwe.c          Optimized C port
 benchmark.c                C benchmark
 Makefile                   C build/test/bench targets
-SECURITY_ANALYSIS.md       v1.1 security notes
+SECURITY_ANALYSIS.md       v1.3 security notes
 LICENSE                    MIT license
 log/                       Historical experiment logs
 out/                       Generated analysis artifacts

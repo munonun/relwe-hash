@@ -24,6 +24,8 @@ const (
 	DefaultEta    = 2
 	Warning       = "This is a toy hash for educational purposes only. Do not use for real security."
 	mask32        = uint32(0xFFFFFFFF)
+	hashDomain    = "RELWE-HASH-v1"
+	xofDomain     = "RELWE-XOF-v1"
 )
 
 var primitiveRoot = primitiveRootMod(Q)
@@ -63,6 +65,28 @@ type StateTraceRound struct {
 	BWords       []uint32
 	EWords       []uint32
 	SeedWords    []uint32
+}
+
+type digestCore struct {
+	iv     []uint32
+	seed   []uint32
+	state  []ringPoly
+	errVec []ringPoly
+}
+
+// Sum256 returns the v1.3 fixed 256-bit Re-LWE digest.
+func Sum256(msg []byte) [32]byte {
+	h := NewWithParams(DefaultK, DefaultRounds, DefaultOutput)
+	out := h.sumBytes(msg, 32, hashDomain)
+	var sum [32]byte
+	copy(sum[:], out)
+	return sum
+}
+
+// XOF expands msg into outLen bytes using the v1.3 Re-LWE XOF domain.
+func XOF(msg []byte, outLen int) []byte {
+	h := NewWithParams(DefaultK, DefaultRounds, DefaultOutput)
+	return h.XOF(msg, outLen)
 }
 
 // New returns a configured pure recursive Re-LWE hash context.
@@ -144,7 +168,7 @@ func (h *ReLWEHash) Hash(text string) string {
 
 // HashBytes hashes raw bytes and returns a hex digest.
 func (h *ReLWEHash) HashBytes(message []byte) string {
-	return h.digestFromIV(h.absorbBytes(message))
+	return hex.EncodeToString(h.sumBytes(message, h.OutputBits/8, hashDomain))
 }
 
 // HashFile hashes a file and returns a hex digest. It returns an empty string
@@ -174,6 +198,7 @@ func (h *ReLWEHash) HashFileE(filepath string) (string, error) {
 	defer f.Close()
 
 	absorber := newARXSponge(h.K, h.Rounds, h.OutputBits, h.Eta)
+	absorber.update([]byte(hashDomain))
 	buf := make([]byte, 1024*1024)
 	for {
 		n, readErr := f.Read(buf)
@@ -191,13 +216,32 @@ func (h *ReLWEHash) HashFileE(filepath string) (string, error) {
 		}
 	}
 
-	return h.digestFromIV(absorber.finalizeWords()), nil
+	return hex.EncodeToString(h.digestFromIVBytes(absorber.finalizeWords(), h.OutputBits/8, hashDomain)), nil
 }
 
 func (h *ReLWEHash) absorbBytes(message []byte) []uint32 {
+	return h.absorbBytesWithDomain(message, hashDomain)
+}
+
+func (h *ReLWEHash) absorbBytesWithDomain(message []byte, domain string) []uint32 {
 	absorber := newARXSponge(h.K, h.Rounds, h.OutputBits, h.Eta)
+	absorber.update([]byte(domain))
 	absorber.update(message)
 	return absorber.finalizeWords()
+}
+
+func (h *ReLWEHash) sumBytes(message []byte, outLen int, domain string) []byte {
+	return h.digestFromIVBytes(h.absorbBytesWithDomain(message, domain), outLen, domain)
+}
+
+// XOF expands raw bytes to an arbitrary-length v1.3 XOF output. The squeeze
+// phase reuses the same ARX + modified Ring-LWE state as the fixed hash, with
+// an independent domain tag and counter-driven ARX stream.
+func (h *ReLWEHash) XOF(message []byte, outLen int) []byte {
+	if outLen <= 0 {
+		return []byte{}
+	}
+	return h.sumBytes(message, outLen, xofDomain)
 }
 
 func (h *ReLWEHash) noiseBound() int {
@@ -359,8 +403,13 @@ func (h *ReLWEHash) mixRound(state, errVec []ringPoly, seed, iv []uint32, round 
 	return nextState, nextErr, nextSeed
 }
 
-func (h *ReLWEHash) squeeze(seed []uint32, state, errVec []ringPoly, iv []uint32) string {
-	words := make([]uint32, 0, 16+16+5+len(state)*N+len(errVec)*(N/2))
+func (h *ReLWEHash) squeezeBytes(seed []uint32, state, errVec []ringPoly, iv []uint32, outLen int, domain string) []byte {
+	if outLen <= 0 {
+		return []byte{}
+	}
+	domainWords := bytesToWords([]byte(domain))
+	words := make([]uint32, 0, len(domainWords)+16+16+5+len(state)*N+len(errVec)*(N/2))
+	words = append(words, domainWords...)
 	words = append(words, first16(iv)...)
 	words = append(words, first16(seed)...)
 	words = append(words, N, Q, uint32(h.K), uint32(h.Rounds), uint32(h.OutputBits))
@@ -384,17 +433,17 @@ func (h *ReLWEHash) squeeze(seed []uint32, state, errVec []ringPoly, iv []uint32
 		}
 	}
 
-	folded := mixWordList(words, 0xF1A1F01D^uint32(h.OutputBits), 16)
-	stream := newARXStream(folded, 0xD16E5700^uint32(h.OutputBits))
-	digestWords := stream.words(h.OutputBits / 32)
+	folded := mixWordList(words, 0xF1A1F01D^uint32(len(domain)), 16)
+	stream := newARXStream(folded, 0xD16E5700^uint32(len(domain)))
+	digestWords := stream.words((outLen + 3) / 4)
 	for i := range digestWords {
 		digestWords[i] ^= folded[i&15]
 		digestWords[i] = bits.RotateLeft32(digestWords[i], 7+i) ^ folded[(i*5+3)&15]
 	}
-	return hex.EncodeToString(wordsToBytes(digestWords))
+	return wordsToBytes(digestWords)[:outLen]
 }
 
-func (h *ReLWEHash) digestFromIV(iv []uint32) string {
+func (h *ReLWEHash) runDigestCore(iv []uint32) digestCore {
 	state := h.initialState(iv)
 	errVec := h.initialError(iv)
 	seedInput := make([]uint32, 0, 19)
@@ -405,7 +454,21 @@ func (h *ReLWEHash) digestFromIV(iv []uint32) string {
 	for r := 0; r < h.Rounds; r++ {
 		state, errVec, seed = h.mixRound(state, errVec, seed, iv, r)
 	}
-	return h.squeeze(seed, state, errVec, iv)
+	return digestCore{
+		iv:     append([]uint32(nil), iv...),
+		seed:   seed,
+		state:  state,
+		errVec: errVec,
+	}
+}
+
+func (h *ReLWEHash) digestFromIVBytes(iv []uint32, outLen int, domain string) []byte {
+	core := h.runDigestCore(iv)
+	return h.squeezeBytes(core.seed, core.state, core.errVec, core.iv, outLen, domain)
+}
+
+func (h *ReLWEHash) digestFromIV(iv []uint32) string {
+	return hex.EncodeToString(h.digestFromIVBytes(iv, h.OutputBits/8, hashDomain))
 }
 
 // TraceFingerprints returns one compact ARX fingerprint for the initial state

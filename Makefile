@@ -20,6 +20,7 @@ test: all
 	./relwehash_c --pure "self-test"
 	test "$$(cd go && GOCACHE=/tmp/go-build-cache go run ./cmd/relwehash self-test)" = "$$(./relwehash_c self-test)"
 	test "$$(cd go && GOCACHE=/tmp/go-build-cache go run ./cmd/relwehash --rounds 48 self-test)" = "$$(./relwehash_c --rounds 48 self-test)"
+	test "$$(cd go && GOCACHE=/tmp/go-build-cache go run ./cmd/relwehash --xof-len 80 self-test)" = "$$(./relwehash_c --xof-len 80 self-test)"
 	./benchmark_c --data-mb 1 --iterations 1 --threads 2
 
 bench: benchmark_c

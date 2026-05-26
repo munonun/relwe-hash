@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ func main() {
 	pure := flag.Bool("pure", false, "deprecated alias; pure recursive mode is always used")
 	k := flag.Int("k", relwe.DefaultK, "module rank")
 	outputBits := flag.Int("output-bits", relwe.DefaultOutput, "digest size: 256 or 512")
+	xofLen := flag.Int("xof-len", -1, "emit XOF output with this byte length")
 	eta := flag.Int("eta", relwe.DefaultEta, "toy LWE noise parameter eta")
 	flag.Parse()
 	_ = pure
@@ -38,6 +40,15 @@ func main() {
 	}
 
 	if path != "" {
+		if *xofLen >= 0 {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println(hex.EncodeToString(h.XOF(data, *xofLen)))
+			return
+		}
 		digest, err := h.HashFileE(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -48,6 +59,10 @@ func main() {
 	}
 
 	if flag.NArg() > 0 {
+		if *xofLen >= 0 {
+			fmt.Println(hex.EncodeToString(h.XOF([]byte(flag.Arg(0)), *xofLen)))
+			return
+		}
 		fmt.Println(h.Hash(flag.Arg(0)))
 		return
 	}
@@ -56,4 +71,5 @@ func main() {
 	msg := "The stone was rolled away."
 	fmt.Printf("message: %q\n", msg)
 	fmt.Printf("pure-re-lwe digest: %s\n", h.Hash(msg))
+	fmt.Printf("pure-re-lwe xof(64): %s\n", hex.EncodeToString(h.XOF([]byte(msg), 64)))
 }

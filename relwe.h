@@ -25,7 +25,10 @@ typedef struct {
 } relwe_config;
 
 void relwe_default_config(relwe_config *cfg);
-void relwe_hash(const relwe_config *cfg, const uint8_t *msg, size_t len, uint8_t *out);
+void relwe_hash(uint8_t out[32], const uint8_t *msg, size_t len);
+void relwe_xof(uint8_t *out, size_t out_len, const uint8_t *msg, size_t len);
+void relwe_hash_config(const relwe_config *cfg, const uint8_t *msg, size_t len, uint8_t *out);
+void relwe_xof_config(const relwe_config *cfg, uint8_t *out, size_t out_len, const uint8_t *msg, size_t len);
 void relwe_hash_hex(const relwe_config *cfg, const uint8_t *msg, size_t len, char *hex_out);
 int relwe_hash_file_hex(const relwe_config *cfg, const char *path, char *hex_out);
 size_t relwe_digest_size(const relwe_config *cfg);

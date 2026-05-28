@@ -51,13 +51,29 @@ type workerRow struct {
 }
 
 var cliEta = relwe.DefaultEta
+var attackSeedBase int64
 
 func newAttackHash(k, rounds, outputBits int) *relwe.ReLWEHash {
 	return relwe.NewPureWithEta(k, rounds, outputBits, cliEta)
 }
 
+func attackSeed(salt int64, parts ...int) int64 {
+	seed := attackSeedBase
+	if seed == 0 {
+		seed = time.Now().UnixNano()
+	}
+	x := uint64(seed) ^ uint64(salt)
+	for _, part := range parts {
+		x ^= uint64(uint32(part)) + 0x9E3779B97F4A7C15 + (x << 6) + (x >> 2)
+	}
+	if x == 0 {
+		x = 1
+	}
+	return int64(x)
+}
+
 func main() {
-	attacks := flag.String("attacks", "reduced,birthday,differential,random", "comma-separated attacks: reduced,birthday,differential,random,avalanche/stat-avalanche,linear,rotational,cycle,low-entropy,targeted-conditional,state-trace,state-evolution,state-rank,higher-order-state,degree-growth,walsh-bias,mutual-info,sat-smt,milp,algebraic,impossible,groebner")
+	attacks := flag.String("attacks", "reduced,birthday,differential,random", "comma-separated attacks: reduced,birthday,differential,random,avalanche/stat-avalanche,linear,rotational,cycle,low-entropy,targeted-conditional,state-trace,diff-state-trace,state-evolution,state-rank,higher-order-state,degree-growth,walsh-bias,mutual-info,sat-smt,milp,algebraic,impossible,groebner,lattice")
 	reducedRoundsText := flag.String("reduced-rounds", "4,8,12,16,24,32", "comma-separated reduced rounds")
 	reducedAttempts := flag.Int("reduced-attempts", 100000, "birthday-style random attempts per reduced round")
 	birthdayRoundsText := flag.String("birthday-rounds", "48", "comma-separated round counts for birthday attack, e.g. 24,48")
@@ -111,11 +127,20 @@ func main() {
 	groebnerMessageBits := flag.Int("groebner-message-bits", 8, "symbolic message bits for Sage/Groebner mini-core")
 	groebnerOutputBits := flag.Int("groebner-output-bits", 8, "truncated output bits constrained in Sage/Groebner export")
 	groebnerTimeoutSec := flag.Int("groebner-timeout-sec", 30, "solver timeout hint printed in Sage/Groebner export")
+	latticeRoundsText := flag.String("lattice-rounds", "1,2", "comma-separated rounds for reduced Re-LWE lattice export")
+	latticeNsText := flag.String("lattice-n", "16,32", "comma-separated tiny lattice dimensions for reduced Re-LWE lattice export")
+	latticeEtasText := flag.String("lattice-eta", "2,4", "comma-separated eta values for reduced Re-LWE lattice export")
+	latticeSamples := flag.Int("lattice-samples", 16, "samples per round/dimension/eta/phase for lattice export")
+	latticeOutputDir := flag.String("lattice-output-dir", filepath.Join("out", "lattice"), "output directory for lattice CSV and Sage/Python scripts")
+	latticeBKZBlock := flag.Int("lattice-bkz-block", 20, "BKZ block-size hint for generated Sage script")
 	stateTraceRounds := flag.Int("state-trace-rounds", relwe.DefaultRounds, "rounds for internal state trace")
 	stateTraceSamples := flag.Int("state-trace-samples", 256, "random samples for internal state trace")
 	stateTraceMessageBits := flag.Int("state-trace-message-bits", 512, "random message bits for internal state trace")
 	stateTraceOutput := flag.String("state-trace-output", "", "CSV output path for state trace; default out/state_trace/state_trace_eta<eta>.csv")
 	stateTraceLowEntropy := flag.Bool("state-trace-low-entropy", true, "include low-entropy messages in state trace")
+	diffStateTraceRoundsText := flag.String("diff-state-trace-rounds", "1,2,3,4", "comma-separated rounds for digest-vs-internal differential state trace")
+	diffStateTraceTrials := flag.Int("diff-state-trace-trials", 512, "random trials for digest-vs-internal differential state trace")
+	diffStateTraceMessageLen := flag.Int("diff-state-trace-message-len", 32, "message length in bytes for digest-vs-internal differential state trace")
 	stateEvolutionInput := flag.String("state-evolution-input", "", "state-trace CSV input; default out/state_trace/state_trace_eta<eta>.csv")
 	stateEvolutionOutputDir := flag.String("state-evolution-output-dir", filepath.Join("out", "state_evolution"), "output directory for state evolution CSV/plots")
 	stateEvolutionCompare := flag.String("state-evolution-compare", "", "comma-separated state-trace CSVs for eta overlay comparison")
@@ -149,6 +174,7 @@ func main() {
 	k := flag.Int("k", relwe.DefaultK, "module rank")
 	outputBits := flag.Int("output-bits", relwe.DefaultOutput, "digest size: 256 or 512")
 	eta := flag.Int("eta", relwe.DefaultEta, "toy LWE noise parameter eta")
+	seed := flag.Int64("seed", 0, "fixed RNG seed for reproducible experiments; 0 uses time-based seeds")
 	flag.Parse()
 
 	if *eta <= 0 {
@@ -159,6 +185,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "warning: eta=%d is unusually large for this toy construction\n", *eta)
 	}
 	cliEta = *eta
+	attackSeedBase = *seed
 
 	reducedRounds, err := parseRounds(*reducedRoundsText)
 	must(err)
@@ -180,6 +207,14 @@ func main() {
 	must(err)
 	groebnerRounds, err := parseRounds(*groebnerRoundsText)
 	must(err)
+	latticeRounds, err := parseRounds(*latticeRoundsText)
+	must(err)
+	latticeNs, err := parseRounds(*latticeNsText)
+	must(err)
+	latticeEtas, err := parseRounds(*latticeEtasText)
+	must(err)
+	diffStateTraceRounds, err := parseRounds(*diffStateTraceRoundsText)
+	must(err)
 
 	selected := parseAttackSet(*attacks)
 	if *threads > 0 {
@@ -187,6 +222,9 @@ func main() {
 	}
 	fmt.Println("Pure Re-LWE Hash Go attack experiments")
 	fmt.Printf("k=%d, output_bits=%d, prefix_bits=%d, eta=%d\n", *k, *outputBits, *prefixBits, cliEta)
+	if attackSeedBase != 0 {
+		fmt.Printf("seed=%d\n", attackSeedBase)
+	}
 	fmt.Println("Note: prefix collisions are truncated-digest experiments, not full hash breaks.")
 
 	if selected["reduced"] {
@@ -240,6 +278,9 @@ func main() {
 		}
 		stateTraceAttack(*stateTraceRounds, *stateTraceSamples, *stateTraceMessageBits, outPath, *stateTraceLowEntropy, *k, *outputBits)
 	}
+	if selected["diff-state-trace"] {
+		differentialStateTraceAttack(diffStateTraceRounds, *diffStateTraceTrials, *diffStateTraceMessageLen, *threads, *k, *outputBits)
+	}
 	if selected["state-evolution"] {
 		inputPath := *stateEvolutionInput
 		if inputPath == "" {
@@ -292,6 +333,9 @@ func main() {
 	}
 	if selected["groebner"] {
 		groebnerExport(groebnerRounds, *groebnerMessageBits, *groebnerOutputBits, *groebnerTimeoutSec)
+	}
+	if selected["lattice"] {
+		latticeReductionHarness(latticeRounds, latticeNs, latticeEtas, *latticeSamples, *latticeOutputDir, *latticeBKZBlock, *k, *outputBits)
 	}
 }
 
@@ -370,7 +414,7 @@ func prefixBirthdayWorker(label string, workerID, rounds, attempts, prefixBits, 
 	for i := 0; i < len(label); i++ {
 		labelMix = labelMix*131 + uint64(label[i])
 	}
-	seed := int64(uint64(time.Now().UnixNano()) ^ (uint64(workerID+1) * 0x9E3779B97F4A7C15) ^ (uint64(rounds) * 0xD1B54A32D192ED03) ^ labelMix)
+	seed := attackSeed(int64(labelMix), workerID, rounds, attempts, prefixBits, k, outputBits)
 	rng := mrand.New(mrand.NewSource(seed))
 
 	for !stop.Load() {
@@ -462,7 +506,7 @@ func characteristicSearch(rounds []int, trials int, flipCounts []int, searches, 
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
-			rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0xA5A5A5A5)))
+			rng := mrand.New(mrand.NewSource(attackSeed(0xA5A5A5A5, workerID, trials, k, outputBits, messageLen)))
 			for job := range jobs {
 				h := newAttackHash(k, job.rounds, outputBits)
 				minFlip, maxFlip, sum := outputBits, 0, 0
@@ -651,7 +695,7 @@ func statisticalAvalancheTest(trials, rounds, k, outputBits, minMessageLen, maxM
 
 func statAvalancheWorker(workerID, trials, rounds, k, outputBits, minMessageLen, maxMessageLen, trackedInputBits int) statAvalanchePartial {
 	h := newAttackHash(k, rounds, outputBits)
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0x53544154+0x4156)))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x535441544156, workerID, trials, rounds, k, outputBits, minMessageLen, maxMessageLen)))
 	partial := statAvalanchePartial{
 		distances:        make([]int, 0, trials),
 		outputFlipCounts: make([]int, outputBits),
@@ -852,7 +896,7 @@ func makeLinearMasks(maskCount, inputBits, outputBits int) []linearMask {
 
 func linearWorker(workerID, trials, rounds, k, outputBits, messageLen int, masks []linearMask) []int {
 	h := newAttackHash(k, rounds, outputBits)
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0x1F123BB5)))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x1F123BB5, workerID, trials, rounds, k, outputBits, messageLen)))
 	ones := make([]int, len(masks))
 	for i := 0; i < trials; i++ {
 		message := make([]byte, messageLen)
@@ -932,7 +976,7 @@ func rotationalSymmetryTest(trials, rounds int, shifts []int, messageLen, thread
 
 func rotationalWorker(workerID, trials, rounds, shift, messageLen, k, outputBits int) rotationalPartial {
 	h := newAttackHash(k, rounds, outputBits)
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0x52544C)))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x52544C, workerID, trials, rounds, shift, messageLen, k, outputBits)))
 	out := rotationalPartial{shift: shift, count: trials, minRelation: outputBits}
 	for i := 0; i < trials; i++ {
 		msg := make([]byte, messageLen)
@@ -1110,7 +1154,7 @@ func targetedConditionalAvalancheTest(rounds, searches, trials, messageLen, thre
 		go func(workerID int) {
 			defer wg.Done()
 			h := newAttackHash(k, rounds, outputBits)
-			localRng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0x5443)))
+			localRng := mrand.New(mrand.NewSource(attackSeed(0x5443, workerID, trials, rounds, k, outputBits, messageLen)))
 			for job := range jobs {
 				results <- targetedWorker(h, localRng, job, trials, messageLen)
 			}
@@ -1194,6 +1238,197 @@ type stateTraceSummary struct {
 	carryCount           int
 	repeatedFingerprints int
 	fingerprintSeen      map[string]int
+}
+
+type diffStateTracePartial struct {
+	rounds []diffStateTraceRoundAccum
+}
+
+type diffStateTraceRoundAccum struct {
+	round       int
+	count       int
+	digestSum   int
+	digestMin   int
+	digestMax   int
+	bSum        int
+	bMin        int
+	bMax        int
+	eSum        int
+	eMin        int
+	eMax        int
+	seedSum     int
+	seedMin     int
+	seedMax     int
+	combinedSum int
+	combinedMin int
+	combinedMax int
+}
+
+func differentialStateTraceAttack(rounds []int, trials, messageLen, threads, k, outputBits int) {
+	fmt.Printf("\n== Differential state-trace avalanche (eta=%d) ==\n", cliEta)
+	if trials <= 0 || messageLen <= 0 {
+		fmt.Fprintln(os.Stderr, "error: diff-state-trace-trials and diff-state-trace-message-len must be positive")
+		os.Exit(2)
+	}
+	if outputBits != 256 && outputBits != 512 {
+		fmt.Fprintln(os.Stderr, "error: diff-state-trace expects 256-bit or 512-bit output")
+		os.Exit(2)
+	}
+	if threads <= 0 {
+		threads = runtime.NumCPU()
+	}
+	sort.Ints(rounds)
+	rounds = uniqueInts(rounds)
+	for _, r := range rounds {
+		if r <= 0 {
+			fmt.Fprintln(os.Stderr, "error: diff-state-trace rounds must be positive")
+			os.Exit(2)
+		}
+	}
+
+	start := time.Now()
+	perWorker := splitWork(trials, threads)
+	partials := make(chan diffStateTracePartial, threads)
+	var wg sync.WaitGroup
+	for workerID, count := range perWorker {
+		if count == 0 {
+			continue
+		}
+		wg.Add(1)
+		go func(workerID, count int) {
+			defer wg.Done()
+			partials <- diffStateTraceWorker(workerID, count, rounds, messageLen, k, outputBits)
+		}(workerID, count)
+	}
+	go func() {
+		wg.Wait()
+		close(partials)
+	}()
+
+	acc := newDiffStateTraceAccums(rounds)
+	for partial := range partials {
+		for i := range partial.rounds {
+			mergeDiffStateTraceAccum(&acc[i], partial.rounds[i])
+		}
+	}
+
+	stateBits := k * relwe.N * 16
+	seedBits := 16 * 32
+	combinedBits := 2*stateBits + seedBits
+	fmt.Printf("rounds: %v, k: %d, trials: %d, message_len: %d bytes, output_bits: %d\n", rounds, k, trials, messageLen, outputBits)
+	fmt.Println("round | digest mean/% | b mean/% | e mean/% | seed mean/% | combined internal mean/% | min..max digest | min..max internal")
+	for _, row := range acc {
+		if row.count == 0 {
+			continue
+		}
+		dMean := float64(row.digestSum) / float64(row.count)
+		bMean := float64(row.bSum) / float64(row.count)
+		eMean := float64(row.eSum) / float64(row.count)
+		sMean := float64(row.seedSum) / float64(row.count)
+		cMean := float64(row.combinedSum) / float64(row.count)
+		fmt.Printf(
+			"%5d | %7.2f/%6.2f | %7.2f/%6.2f | %7.2f/%6.2f | %7.2f/%6.2f | %7.2f/%6.2f | %d..%d | %d..%d\n",
+			row.round,
+			dMean, 100*dMean/float64(outputBits),
+			bMean, 100*bMean/float64(stateBits),
+			eMean, 100*eMean/float64(stateBits),
+			sMean, 100*sMean/float64(seedBits),
+			cMean, 100*cMean/float64(combinedBits),
+			row.digestMin, row.digestMax,
+			row.combinedMin, row.combinedMax,
+		)
+	}
+	fmt.Printf("elapsed: %s\n", time.Since(start).Round(time.Millisecond))
+	fmt.Println("note: internal b/e/seed distances are measured after the listed recursive round and before final squeeze.")
+}
+
+func diffStateTraceWorker(workerID, trials int, rounds []int, messageLen, k, outputBits int) diffStateTracePartial {
+	rng := mrand.New(mrand.NewSource(attackSeed(0xD157A7E5157, workerID, trials, messageLen, k, outputBits)))
+	acc := newDiffStateTraceAccums(rounds)
+	hashes := make(map[int]*relwe.ReLWEHash, len(rounds))
+	for _, r := range rounds {
+		hashes[r] = newAttackHash(k, r, outputBits)
+	}
+	for i := 0; i < trials; i++ {
+		msg := make([]byte, messageLen)
+		rng.Read(msg)
+		flipBit := rng.Intn(messageLen * 8)
+		modified := flipOneBit(msg, flipBit)
+		for idx, r := range rounds {
+			h := hashes[r]
+			digestA, _ := hex.DecodeString(h.HashBytes(msg))
+			digestB, _ := hex.DecodeString(h.HashBytes(modified))
+			digestDist := hammingBytes(digestA, digestB)
+			traceA := h.TraceStateMetrics(msg, r)
+			traceB := h.TraceStateMetrics(modified, r)
+			if len(traceA) <= r || len(traceB) <= r {
+				continue
+			}
+			bDist := hammingWordDelta(traceA[r].BWords, traceB[r].BWords)
+			eDist := hammingWordDelta(traceA[r].EWords, traceB[r].EWords)
+			seedDist := hammingWordDelta(traceA[r].SeedWords, traceB[r].SeedWords)
+			addDiffStateTraceSample(&acc[idx], digestDist, bDist, eDist, seedDist)
+		}
+	}
+	return diffStateTracePartial{rounds: acc}
+}
+
+func newDiffStateTraceAccums(rounds []int) []diffStateTraceRoundAccum {
+	out := make([]diffStateTraceRoundAccum, len(rounds))
+	maxInt := int(^uint(0) >> 1)
+	for i, r := range rounds {
+		out[i] = diffStateTraceRoundAccum{
+			round:       r,
+			digestMin:   maxInt,
+			bMin:        maxInt,
+			eMin:        maxInt,
+			seedMin:     maxInt,
+			combinedMin: maxInt,
+		}
+	}
+	return out
+}
+
+func addDiffStateTraceSample(acc *diffStateTraceRoundAccum, digest, b, e, seed int) {
+	combined := b + e + seed
+	acc.count++
+	acc.digestSum += digest
+	acc.digestMin = min(acc.digestMin, digest)
+	acc.digestMax = max(acc.digestMax, digest)
+	acc.bSum += b
+	acc.bMin = min(acc.bMin, b)
+	acc.bMax = max(acc.bMax, b)
+	acc.eSum += e
+	acc.eMin = min(acc.eMin, e)
+	acc.eMax = max(acc.eMax, e)
+	acc.seedSum += seed
+	acc.seedMin = min(acc.seedMin, seed)
+	acc.seedMax = max(acc.seedMax, seed)
+	acc.combinedSum += combined
+	acc.combinedMin = min(acc.combinedMin, combined)
+	acc.combinedMax = max(acc.combinedMax, combined)
+}
+
+func mergeDiffStateTraceAccum(dst *diffStateTraceRoundAccum, src diffStateTraceRoundAccum) {
+	if src.count == 0 {
+		return
+	}
+	dst.count += src.count
+	dst.digestSum += src.digestSum
+	dst.digestMin = min(dst.digestMin, src.digestMin)
+	dst.digestMax = max(dst.digestMax, src.digestMax)
+	dst.bSum += src.bSum
+	dst.bMin = min(dst.bMin, src.bMin)
+	dst.bMax = max(dst.bMax, src.bMax)
+	dst.eSum += src.eSum
+	dst.eMin = min(dst.eMin, src.eMin)
+	dst.eMax = max(dst.eMax, src.eMax)
+	dst.seedSum += src.seedSum
+	dst.seedMin = min(dst.seedMin, src.seedMin)
+	dst.seedMax = max(dst.seedMax, src.seedMax)
+	dst.combinedSum += src.combinedSum
+	dst.combinedMin = min(dst.combinedMin, src.combinedMin)
+	dst.combinedMax = max(dst.combinedMax, src.combinedMax)
 }
 
 func stateTraceAttack(rounds, samples, messageBits int, outputPath string, includeLowEntropy bool, k, outputBits int) {
@@ -1300,7 +1535,7 @@ func makeStateTraceSamples(samples, messageBits int, includeLowEntropy bool) []s
 			stateTraceSample{name: "repeat-ab", message: bytes.Repeat([]byte("ab"), max(1, byteLen/2)), flipBit: min(messageBits-1, 11)},
 		)
 	}
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ 0x571A7E))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x571A7E, samples, messageBits)))
 	for i := 0; i < samples; i++ {
 		msg := make([]byte, byteLen)
 		rng.Read(msg)
@@ -3666,6 +3901,539 @@ func groebnerExport(rounds []int, messageBits, outputBits, timeoutSec int) {
 	fmt.Println("solver suggestion: sage out/groebner/case_r<round>_m<msgbits>_o<outbits>.sage")
 }
 
+type latticeInstance struct {
+	ID         string
+	Round      int
+	Phase      string
+	N          int
+	Q          int
+	Eta        int
+	Sample     int
+	MessageHex string
+	A          []int
+	S          []int
+	E          []int
+	B          []int
+}
+
+func latticeReductionHarness(rounds, ns, etas []int, samples int, outDir string, bkzBlock, k, outputBits int) {
+	fmt.Printf("\n== Reduced Re-LWE lattice-reduction export (eta=%d) ==\n", cliEta)
+	if samples <= 0 {
+		fmt.Fprintln(os.Stderr, "error: lattice-samples must be positive")
+		os.Exit(2)
+	}
+	for _, n := range ns {
+		if n != 16 && n != 32 {
+			fmt.Fprintln(os.Stderr, "error: lattice-n currently supports tiny dimensions 16 and 32")
+			os.Exit(2)
+		}
+	}
+	for _, eta := range etas {
+		if eta != 1 && eta != 2 && eta != 4 && eta != 8 {
+			fmt.Fprintln(os.Stderr, "error: lattice-eta currently supports 1, 2, 4, and 8")
+			os.Exit(2)
+		}
+	}
+	if bkzBlock <= 0 {
+		bkzBlock = 20
+	}
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "error: could not create %s: %v\n", outDir, err)
+		os.Exit(1)
+	}
+
+	instances := make([]latticeInstance, 0, len(rounds)*len(ns)*len(etas)*samples*2)
+	summaryRows := [][]string{{
+		"round", "phase", "n", "q", "eta", "samples", "avg_error_norm", "avg_secret_norm", "avg_b_norm", "expected_hidden_relation", "attack_status",
+	}}
+	for _, r := range rounds {
+		if r <= 0 || r > 2 {
+			fmt.Fprintln(os.Stderr, "error: lattice-rounds is intended for round 1 and round 2")
+			os.Exit(2)
+		}
+		h := newAttackHash(k, r, outputBits)
+		for _, n := range ns {
+			for _, eta := range etas {
+				for _, phase := range []string{"before_arx_feedback", "after_arx_feedback"} {
+					errorNormSum, secretNormSum, bNormSum := 0.0, 0.0, 0.0
+					for sample := 0; sample < samples; sample++ {
+						msg := latticeMessage(r, n, eta, sample)
+						trace := h.TraceStateMetrics(msg, r)
+						rowIndex := 0
+						if phase == "after_arx_feedback" {
+							rowIndex = r
+						}
+						inst := buildLatticeInstance(trace[rowIndex], msg, r, phase, n, relwe.Q, eta, sample)
+						errorNormSum += vectorNorm(inst.E)
+						secretNormSum += vectorNorm(inst.S)
+						bNormSum += centeredVectorNorm(inst.B, inst.Q)
+						instances = append(instances, inst)
+					}
+					summaryRows = append(summaryRows, []string{
+						strconv.Itoa(r),
+						phase,
+						strconv.Itoa(n),
+						strconv.Itoa(relwe.Q),
+						strconv.Itoa(eta),
+						strconv.Itoa(samples),
+						fmt.Sprintf("%.6f", errorNormSum/float64(samples)),
+						fmt.Sprintf("%.6f", secretNormSum/float64(samples)),
+						fmt.Sprintf("%.6f", bNormSum/float64(samples)),
+						latticeExpectationLabel(phase, r),
+						"export_only_run_generated_sage_or_python",
+					})
+				}
+			}
+		}
+	}
+
+	instancePath := filepath.Join(outDir, "instances.csv")
+	summaryPath := filepath.Join(outDir, "summary.csv")
+	sagePath := filepath.Join(outDir, "attack_lll_bkz.sage")
+	pythonPath := filepath.Join(outDir, "attack_lll_bkz.py")
+	if err := writeLatticeInstancesCSV(instancePath, instances); err != nil {
+		fmt.Fprintf(os.Stderr, "error: could not write %s: %v\n", instancePath, err)
+		os.Exit(1)
+	}
+	if err := writeRowsCSV(summaryPath, summaryRows); err != nil {
+		fmt.Fprintf(os.Stderr, "error: could not write %s: %v\n", summaryPath, err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(sagePath, []byte(latticeSageScript(bkzBlock)), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "error: could not write %s: %v\n", sagePath, err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(pythonPath, []byte(latticePythonScript()), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "error: could not write %s: %v\n", pythonPath, err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("instances: %d\n", len(instances))
+	fmt.Printf("wrote: %s\n", instancePath)
+	fmt.Printf("wrote: %s\n", summaryPath)
+	fmt.Printf("wrote: %s\n", sagePath)
+	fmt.Printf("wrote: %s\n", pythonPath)
+	fmt.Printf("solver suggestion: sage %s\n", sagePath)
+	fmt.Printf("fallback suggestion: python3 %s\n", pythonPath)
+	fmt.Println("note: exported equations are reduced mini-core A*s+e=b mod q instances derived from state traces; they do not model the full production hash.")
+}
+
+func latticeMessage(round, n, eta, sample int) []byte {
+	msg := make([]byte, 32)
+	seed := uint32(0x1A771CE0) ^ uint32(round)*0x9E3779B1 ^ uint32(n)*0x85EBCA6B ^ uint32(eta)*0xC2B2AE35 ^ uint32(sample)*0x27D4EB2D
+	for i := range msg {
+		seed ^= seed << 13
+		seed ^= seed >> 17
+		seed ^= seed << 5
+		msg[i] = byte(seed >> uint((i&3)*8))
+	}
+	return msg
+}
+
+func buildLatticeInstance(row relwe.StateTraceRound, msg []byte, round int, phase string, n, q, eta, sample int) latticeInstance {
+	seed := append([]uint32(nil), row.SeedWords...)
+	seed = append(seed, row.BWords[:min(len(row.BWords), n)]...)
+	seed = append(seed, row.EWords[:min(len(row.EWords), n)]...)
+	aWords := deterministicWords(seed, uint32(0xA1171CE0)^uint32(round)^uint32(n<<8)^uint32(sample), n*n)
+	a := make([]int, n*n)
+	s := make([]int, n)
+	e := make([]int, n)
+	b := make([]int, n)
+	bound := 16 * eta
+	for i := 0; i < n*n; i++ {
+		a[i] = int(aWords[i] % uint32(q))
+	}
+	for i := 0; i < n; i++ {
+		sWord := wordAt(row.BWords, i)
+		eWord := wordAt(row.EWords, i)
+		s[i] = centeredMod(int(sWord^bits.RotateLeft32(sWord, 11)), q)
+		e[i] = centeredSmall(eWord^bits.RotateLeft32(eWord, 7)^uint32(i)*0x9E3779B1, bound)
+		sum := e[i]
+		for j := 0; j < n; j++ {
+			sum += a[i*n+j] * s[j]
+		}
+		b[i] = modInt(sum, q)
+	}
+	return latticeInstance{
+		ID:         fmt.Sprintf("r%d_%s_n%d_eta%d_s%04d", round, phase, n, eta, sample),
+		Round:      round,
+		Phase:      phase,
+		N:          n,
+		Q:          q,
+		Eta:        eta,
+		Sample:     sample,
+		MessageHex: hex.EncodeToString(msg),
+		A:          a,
+		S:          s,
+		E:          e,
+		B:          b,
+	}
+}
+
+func deterministicWords(seed []uint32, domain uint32, count int) []uint32 {
+	state := make([]uint32, 16)
+	copy(state, seed)
+	for i := range state {
+		state[i] ^= domain + uint32(i)*0x9E3779B1
+	}
+	out := make([]uint32, count)
+	for i := 0; i < count; i++ {
+		x := state[i&15] + uint32(i)*0x85EBCA6B + domain
+		x ^= bits.RotateLeft32(state[(i+5)&15], 7)
+		x += bits.RotateLeft32(state[(i+11)&15], 13)
+		state[i&15] = bits.RotateLeft32(x^state[(i+3)&15], 9) + 0xD1B54A32
+		out[i] = state[i&15] ^ bits.RotateLeft32(x, 17)
+	}
+	return out
+}
+
+func wordAt(words []uint32, index int) uint32 {
+	if len(words) == 0 {
+		return uint32(index) * 0x9E3779B1
+	}
+	return words[index%len(words)]
+}
+
+func centeredSmall(word uint32, bound int) int {
+	width := 2*bound + 1
+	return int(word%uint32(width)) - bound
+}
+
+func centeredMod(value, q int) int {
+	v := modInt(value, q)
+	if v > q/2 {
+		v -= q
+	}
+	return v
+}
+
+func modInt(value, q int) int {
+	v := value % q
+	if v < 0 {
+		v += q
+	}
+	return v
+}
+
+func vectorNorm(values []int) float64 {
+	sum := 0.0
+	for _, v := range values {
+		sum += float64(v * v)
+	}
+	return math.Sqrt(sum)
+}
+
+func centeredVectorNorm(values []int, q int) float64 {
+	sum := 0.0
+	for _, v := range values {
+		c := centeredMod(v, q)
+		sum += float64(c * c)
+	}
+	return math.Sqrt(sum)
+}
+
+func latticeExpectationLabel(phase string, round int) string {
+	if phase == "before_arx_feedback" {
+		return "baseline_relation_expected_easier"
+	}
+	if round <= 1 {
+		return "after_feedback_relation_may_remain_detectable"
+	}
+	return "after_feedback_relation_expected_harder"
+}
+
+func writeLatticeInstancesCSV(path string, instances []latticeInstance) error {
+	rows := [][]string{{
+		"id", "round", "phase", "n", "q", "eta", "sample", "message_hex", "a_flat", "s", "e", "b",
+	}}
+	for _, inst := range instances {
+		rows = append(rows, []string{
+			inst.ID,
+			strconv.Itoa(inst.Round),
+			inst.Phase,
+			strconv.Itoa(inst.N),
+			strconv.Itoa(inst.Q),
+			strconv.Itoa(inst.Eta),
+			strconv.Itoa(inst.Sample),
+			inst.MessageHex,
+			joinInts(inst.A),
+			joinInts(inst.S),
+			joinInts(inst.E),
+			joinInts(inst.B),
+		})
+	}
+	return writeRowsCSV(path, rows)
+}
+
+func joinInts(values []int) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, " ")
+}
+
+func latticeSageScript(defaultBKZBlock int) string {
+	script := `#!/usr/bin/env sage
+from sage.all import *
+from sage.modules.free_module_integer import IntegerLattice
+import argparse
+import csv
+import math
+import sys
+import traceback
+from pathlib import Path
+
+DEFAULT_BKZ_BLOCK = {{BKZ_BLOCK}}
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Reduced Re-LWE lattice LLL/BKZ harness")
+    parser.add_argument("--out-dir", default=None, help="directory containing instances.csv and receiving solver_results.csv")
+    return parser.parse_args()
+
+def resolve_paths(args):
+    root = Path(args.out_dir).expanduser().resolve() if args.out_dir else Path.cwd() / "out" / "lattice"
+    return root, root / "instances.csv", root / "solver_results.csv"
+
+def ints(text):
+    if not text.strip():
+        return []
+    return [int(x) for x in text.split()]
+
+def centered(v, q):
+    v = int(v) % q
+    return v - q if v > q // 2 else v
+
+def residual_norm(A, s, b, q):
+    vals = []
+    n = len(s)
+    for i in range(n):
+        total = sum(A[i][j] * s[j] for j in range(n))
+        vals.append(centered(b[i] - total, q))
+    return math.sqrt(sum(x*x for x in vals)), max(abs(x) for x in vals)
+
+def vector_norm(vals):
+    return math.sqrt(sum(float(x) * float(x) for x in vals))
+
+def rhf_estimate(norm, det, dim):
+    if norm <= 0 or det <= 0 or dim <= 1:
+        return float("nan")
+    return math.exp((math.log(float(norm)) - math.log(float(det)) / float(dim)) / float(dim - 1))
+
+def reduce_basis(B, method):
+    # IntegerLattice is used as the Sage lattice wrapper; the matrix reduction
+    # calls keep the script compatible with common Sage versions.
+    L = IntegerLattice(B, lll_reduce=False)
+    basis = L.basis_matrix()
+    if method == "BKZ":
+        return basis.BKZ(block_size=DEFAULT_BKZ_BLOCK)
+    return basis.LLL()
+
+def secret_distance(candidate, true_s, q):
+    if candidate is None:
+        return ""
+    return math.sqrt(sum(centered(candidate[i] - true_s[i], q) ** 2 for i in range(len(true_s))))
+
+def primal_attack(A, b, true_s, q, eta, method):
+    n = len(true_s)
+    m = len(b)
+    embed = max(1, 16 * eta)
+    dim = m + n + 1
+
+    # Rows generate vectors (q*y + A*s - b*t, s, embed*t).
+    # A successful embedding often exposes a row close to (e, s, -embed),
+    # from which s is read without using true_s.
+    B = Matrix(ZZ, dim, dim)
+    for i in range(m):
+        B[i, i] = q
+    for j in range(n):
+        for i in range(m):
+            B[m + j, i] = A[i][j]
+        B[m + j, m + j] = 1
+    for i in range(m):
+        B[m + n, i] = b[i]
+    B[m + n, m + n] = embed
+
+    red = reduce_basis(B, method)
+    rows = [list(map(ZZ, row)) for row in red.rows()]
+    best = min(rows, key=vector_norm)
+    best_norm = vector_norm(best)
+    det = abs(ZZ(B.det()))
+    rhf = rhf_estimate(best_norm, det, dim)
+
+    recovered = None
+    for row in sorted(rows, key=vector_norm):
+        marker = int(row[-1])
+        if abs(marker) == embed:
+            sign = 1 if marker > 0 else -1
+            # If marker is +embed, vector is roughly (-e, -s, +embed).
+            recovered = [centered(-sign * int(row[m + j]), q) for j in range(n)]
+            break
+
+    dist = secret_distance(recovered, true_s, q)
+    success = recovered is not None and dist <= 0.5
+    return {
+        "attack_type": "primal",
+        "method": method,
+        "shortest_vector_norm": "%.6f" % best_norm,
+        "root_hermite_factor": "%.9f" % rhf,
+        "recovered_secret_distance": "" if dist == "" else "%.6f" % dist,
+        "success": str(bool(success)).lower(),
+        "status": "secret_recovered" if success else "not_recovered",
+    }
+
+def dual_attack(A, b, true_s, q, eta, method):
+    n = len(true_s)
+    m = len(b)
+    dim = m + n
+
+    # Rows generate (y, y*A + q*z). A short vector with tiny tail gives a
+    # dual relation; then <b,y> = <e,y> should be unusually small.
+    B = Matrix(ZZ, dim, dim)
+    for i in range(m):
+        B[i, i] = 1
+        for j in range(n):
+            B[i, m + j] = A[i][j]
+    for j in range(n):
+        B[m + j, m + j] = q
+
+    red = reduce_basis(B, method)
+    rows = [list(map(ZZ, row)) for row in red.rows()]
+    best = min(rows, key=vector_norm)
+    best_norm = vector_norm(best)
+    det = abs(ZZ(B.det()))
+    rhf = rhf_estimate(best_norm, det, dim)
+
+    best_score = None
+    best_tail = None
+    for row in sorted(rows, key=vector_norm)[:min(8, len(rows))]:
+        y = [int(row[i]) for i in range(m)]
+        tail = [centered(int(row[m + j]), q) for j in range(n)]
+        score = abs(centered(sum(y[i] * b[i] for i in range(m)), q))
+        tail_norm = vector_norm(tail)
+        if best_score is None or (tail_norm, score) < (best_tail, best_score):
+            best_score = score
+            best_tail = tail_norm
+
+    threshold = max(1, 16 * eta * int(math.sqrt(max(1, m))))
+    success = best_score is not None and best_tail <= 0.5 and best_score <= threshold
+    return {
+        "attack_type": "dual",
+        "method": method,
+        "shortest_vector_norm": "%.6f" % best_norm,
+        "root_hermite_factor": "%.9f" % rhf,
+        "recovered_secret_distance": "",
+        "success": str(bool(success)).lower(),
+        "status": "short_relation_detected" if success else "not_detected",
+    }
+
+def attack_instance(row, method):
+    n = int(row["n"])
+    q = int(row["q"])
+    eta = int(row["eta"])
+    flat = ints(row["a_flat"])
+    A = [flat[i*n:(i+1)*n] for i in range(n)]
+    b = ints(row["b"])
+    true_s = ints(row["s"])
+
+    true_res_norm, true_res_max = residual_norm(A, true_s, b, q)
+    common = {
+        "id": row["id"], "round": row["round"], "phase": row["phase"],
+        "n": row["n"], "eta": row["eta"],
+        "true_residual_norm": "%.6f" % true_res_norm,
+        "true_residual_max": str(true_res_max),
+    }
+    out = []
+    for result in (primal_attack(A, b, true_s, q, eta, method), dual_attack(A, b, true_s, q, eta, method)):
+        merged = dict(common)
+        merged.update(result)
+        out.append(merged)
+    return out
+
+def main():
+    args = parse_args()
+    root, instances_path, out_path = resolve_paths(args)
+    print("out_dir:", root)
+    print("instances:", instances_path)
+    print("output:", out_path)
+    rows = list(csv.DictReader(open(instances_path, newline="")))
+    print("loaded instances:", len(rows))
+    out_rows = []
+    for row in rows:
+        for method in ("LLL", "BKZ"):
+            out_rows.extend(attack_instance(row, method))
+    with open(out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(out_rows)
+    print("wrote", out_path)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        sys.exit(1)
+`
+	return strings.ReplaceAll(script, "{{BKZ_BLOCK}}", strconv.Itoa(defaultBKZBlock))
+}
+
+func latticePythonScript() string {
+	return `#!/usr/bin/env python3
+import csv
+import math
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+INSTANCES = ROOT / "instances.csv"
+OUT = ROOT / "python_summary.csv"
+
+def ints(text):
+    return [int(x) for x in text.split()] if text.strip() else []
+
+def centered(v, q):
+    v %= q
+    return v - q if v > q // 2 else v
+
+def residual(A, s, b, q):
+    vals = []
+    n = len(s)
+    for i in range(n):
+        total = sum(A[i][j] * s[j] for j in range(n))
+        vals.append(centered(b[i] - total, q))
+    return math.sqrt(sum(x*x for x in vals)), max(abs(x) for x in vals)
+
+rows = list(csv.DictReader(open(INSTANCES, newline="")))
+out = []
+for row in rows:
+    n = int(row["n"])
+    q = int(row["q"])
+    eta = int(row["eta"])
+    flat = ints(row["a_flat"])
+    A = [flat[i*n:(i+1)*n] for i in range(n)]
+    s = ints(row["s"])
+    b = ints(row["b"])
+    norm, max_abs = residual(A, s, b, q)
+    out.append({
+        "id": row["id"],
+        "round": row["round"],
+        "phase": row["phase"],
+        "n": row["n"],
+        "eta": row["eta"],
+        "true_residual_norm": f"{norm:.6f}",
+        "true_residual_max": str(max_abs),
+        "hidden_relation_detected": str(max_abs <= 16 * eta).lower(),
+        "status": "python_fallback_no_lll_install_sage_for_reduction",
+    })
+
+with open(OUT, "w", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=list(out[0].keys()))
+    writer.writeheader()
+    writer.writerows(out)
+print("wrote", OUT)
+`
+}
+
 func clampMiniCoreBits(label string, messageBits, outputBits int) (int, int) {
 	if messageBits <= 0 || outputBits <= 0 {
 		fmt.Fprintf(os.Stderr, "error: %s-message-bits and %s-output-bits must be positive\n", label, label)
@@ -4274,7 +5042,7 @@ func randomMessageTest(rounds, attempts, threads, prefixBits, k, outputBits int)
 func randomWorker(workerID, rounds, k, outputBits, prefixBits, attempts int) []workerRow {
 	h := newAttackHash(k, rounds, outputBits)
 	local := make(map[string]seenEntry)
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano() ^ int64(workerID*0x9E3779B1)))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x9E3779B1, workerID, rounds, k, outputBits, prefixBits, attempts)))
 	prefix := []byte("worker=0000|")
 	binary.LittleEndian.PutUint32(prefix[7:11], uint32(workerID))
 	for i := 0; i < attempts; i++ {
@@ -4362,6 +5130,7 @@ func parseAttackSet(text string) map[string]bool {
 		"low-entropy":          true,
 		"targeted-conditional": true,
 		"state-trace":          true,
+		"diff-state-trace":     true,
 		"state-evolution":      true,
 		"state-rank":           true,
 		"higher-order-state":   true,
@@ -4373,6 +5142,7 @@ func parseAttackSet(text string) map[string]bool {
 		"algebraic":            true,
 		"impossible":           true,
 		"groebner":             true,
+		"lattice":              true,
 	}
 	for _, item := range strings.Split(text, ",") {
 		item = strings.TrimSpace(strings.ToLower(item))
@@ -4381,6 +5151,9 @@ func parseAttackSet(text string) map[string]bool {
 		}
 		if item == "avalanche" {
 			item = "stat-avalanche"
+		}
+		if item == "differential-state-trace" {
+			item = "diff-state-trace"
 		}
 		if !valid[item] {
 			fmt.Fprintf(os.Stderr, "unknown attack: %s\n", item)
@@ -4526,6 +5299,21 @@ func formatInts(values []int) string {
 	return strings.Join(parts, ",")
 }
 
+func uniqueInts(values []int) []int {
+	if len(values) == 0 {
+		return nil
+	}
+	out := values[:0]
+	var last int
+	for i, value := range values {
+		if i == 0 || value != last {
+			out = append(out, value)
+			last = value
+		}
+	}
+	return out
+}
+
 func splitWork(total, workers int) []int {
 	if workers <= 0 {
 		workers = 1
@@ -4629,7 +5417,7 @@ func similarMessage(base []byte, counter int) []byte {
 }
 
 func randomMessage() []byte {
-	rng := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+	rng := mrand.New(mrand.NewSource(attackSeed(0x52414E44)))
 	return randomMessageFrom(rng)
 }
 

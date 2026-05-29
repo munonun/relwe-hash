@@ -2,7 +2,7 @@ CC ?= gcc
 CFLAGS ?= -O3 -march=native -mavx2 -mfma -flto -funroll-loops -fomit-frame-pointer -falign-functions=64 -falign-loops=64 -falign-jumps=32 -falign-labels=32 -fopenmp -std=c11 -Wall -Wextra -Wshadow -DNDEBUG
 LDFLAGS ?= -fopenmp -flto
 
-.PHONY: all clean test bench
+.PHONY: all clean test bench attacks attacks-quick attacks-full
 
 all: relwehash_c benchmark_c relwe_api_test
 
@@ -29,6 +29,15 @@ test: all
 
 bench: benchmark_c
 	./benchmark_c --data-mb 64 --iterations 16 --threads 16
+
+attacks:
+	./scripts/run_attack_suite.sh --standard
+
+attacks-quick:
+	./scripts/run_attack_suite.sh --quick
+
+attacks-full:
+	./scripts/run_attack_suite.sh --full
 
 clean:
 	rm -f relwe.o relwehash_c benchmark_c relwe_api_test
